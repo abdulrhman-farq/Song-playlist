@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-serif: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  --font-arabic: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background-color: #0c0a07;
+  color: #fbf8f1;
+}
+
+body {
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  background-image: radial-gradient(
+      circle at 18% 12%,
+      rgba(231, 177, 52, 0.12),
+      transparent 45%
+    ),
+    radial-gradient(circle at 82% 0%, rgba(231, 177, 52, 0.09), transparent 40%),
+    linear-gradient(180deg, #0c0a07 0%, #161310 100%);
+  background-attachment: fixed;
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-arabic);
+}
+
+.luxury-card {
+  background: linear-gradient(
+    180deg,
+    rgba(33, 28, 23, 0.85) 0%,
+    rgba(22, 19, 16, 0.85) 100%
+  );
+  border: 1px solid rgba(231, 177, 52, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 1.25rem;
+}
+
+.gold-border {
+  border: 1px solid rgba(231, 177, 52, 0.35);
+}
+
+.gold-text {
+  color: #efc759;
+}
+
+.gold-button {
+  background: linear-gradient(135deg, #efc759 0%, #d39520 100%);
+  color: #161310;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 24px -10px rgba(211, 149, 32, 0.6);
+}
+
+.gold-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px -10px rgba(211, 149, 32, 0.75);
+}
+
+.gold-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost-button {
+  background: rgba(231, 177, 52, 0.08);
+  color: #efc759;
+  border: 1px solid rgba(231, 177, 52, 0.3);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ghost-button:hover:not(:disabled) {
+  background: rgba(231, 177, 52, 0.18);
+  border-color: rgba(231, 177, 52, 0.55);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  color: rgba(251, 248, 241, 0.7);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: rgba(231, 177, 52, 0.14);
+  color: #efc759;
+}
+
+.icon-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+input[type="range"].gold-range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(251, 248, 241, 0.18);
+  border-radius: 9999px;
+  outline: none;
+}
+
+input[type="range"].gold-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #efc759;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(231, 177, 52, 0.18);
+}
+
+input[type="range"].gold-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #efc759;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(231, 177, 52, 0.18);
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(231, 177, 52, 0.4) 50%,
+    transparent 100%
+  );
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.drop-target {
+  outline: 2px dashed rgba(231, 177, 52, 0.7);
+  outline-offset: -4px;
+  border-radius: 1rem;
+}
+
+/* Hide native YouTube iframe — audio only */
+.yt-frame-host {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+  opacity: 0;
+}
