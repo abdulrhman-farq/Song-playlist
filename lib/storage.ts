@@ -1,21 +1,23 @@
-import type { Playlist, Track } from "@/types";
+import type { Language, PersistedSettings, Track } from "@/types";
 
-const PLAYLIST_KEY = "wedding-playlist:v1:playlist";
-const LANG_KEY = "wedding-playlist:v1:lang";
+const META_KEY = "wedding-playlist:v1";
+const LANG_KEY = "wp:lang";
 const DB_NAME = "wedding-playlist";
-const DB_STORE = "audio-blobs";
+const DB_STORE = "blobs";
 const DB_VERSION = 1;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
-export function loadPlaylist(): Playlist | null {
+/* ───────────── localStorage: metadata + language ───────────── */
+
+export function loadMeta(): PersistedSettings | null {
   if (!isBrowser()) return null;
   try {
-    const raw = window.localStorage.getItem(PLAYLIST_KEY);
+    const raw = window.localStorage.getItem(META_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Playlist;
+    const parsed = JSON.parse(raw) as PersistedSettings;
     if (!parsed || !Array.isArray(parsed.tracks)) return null;
     return parsed;
   } catch {
@@ -23,29 +25,29 @@ export function loadPlaylist(): Playlist | null {
   }
 }
 
-export function savePlaylist(playlist: Playlist): void {
+export function saveMeta(data: PersistedSettings): void {
   if (!isBrowser()) return;
   try {
-    window.localStorage.setItem(PLAYLIST_KEY, JSON.stringify(playlist));
+    window.localStorage.setItem(META_KEY, JSON.stringify(data));
   } catch {
-    // ignore quota errors
+    /* ignore quota errors */
   }
 }
 
-export function loadLanguage(): "ar" | "en" | null {
+export function loadLanguage(): Language | null {
   if (!isBrowser()) return null;
-  const value = window.localStorage.getItem(LANG_KEY);
-  return value === "ar" || value === "en" ? value : null;
+  const v = window.localStorage.getItem(LANG_KEY);
+  return v === "ar" || v === "en" ? v : null;
 }
 
-export function saveLanguage(lang: "ar" | "en"): void {
+export function saveLanguage(lang: Language): void {
   if (!isBrowser()) return;
   window.localStorage.setItem(LANG_KEY, lang);
 }
 
-/* ---------------- IndexedDB for uploaded audio blobs ---------------- */
+/* ───────────── IndexedDB: audio blobs ───────────── */
 
-function openDb(): Promise<IDBDatabase> {
+function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
@@ -59,60 +61,78 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function putAudioBlob(id: string, blob: Blob): Promise<void> {
+export async function putBlob(key: string, blob: Blob): Promise<void> {
   if (!isBrowser() || !("indexedDB" in window)) return;
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
+  const db = await openDB();
+  await new Promise<void>((res, rej) => {
     const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).put(blob, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
+    tx.objectStore(DB_STORE).put(blob, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error);
   });
   db.close();
 }
 
-export async function getAudioBlob(id: string): Promise<Blob | null> {
+export async function getBlob(key: string): Promise<Blob | null> {
   if (!isBrowser() || !("indexedDB" in window)) return null;
-  const db = await openDb();
-  const blob = await new Promise<Blob | null>((resolve, reject) => {
+  const db = await openDB();
+  const blob = await new Promise<Blob | null>((res, rej) => {
     const tx = db.transaction(DB_STORE, "readonly");
-    const req = tx.objectStore(DB_STORE).get(id);
-    req.onsuccess = () => resolve((req.result as Blob | undefined) ?? null);
-    req.onerror = () => reject(req.error);
+    const r = tx.objectStore(DB_STORE).get(key);
+    r.onsuccess = () => res((r.result as Blob | undefined) ?? null);
+    r.onerror = () => rej(r.error);
   });
   db.close();
   return blob;
 }
 
-export async function deleteAudioBlob(id: string): Promise<void> {
+export async function deleteBlob(key: string): Promise<void> {
   if (!isBrowser() || !("indexedDB" in window)) return;
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
+  const db = await openDB();
+  await new Promise<void>((res, rej) => {
     const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
   });
   db.close();
 }
 
-/**
- * Rebuild object URLs for any uploaded tracks by reading their blobs
- * back from IndexedDB. Returns a map of track id → object URL.
- * Tracks whose blob is missing are silently skipped — they will be
- * shown as unplayable in the UI.
- */
-export async function rehydrateUploadUrls(
-  tracks: Track[],
-): Promise<Record<string, string>> {
-  const result: Record<string, string> = {};
-  for (const t of tracks) {
-    if (t.source !== "upload") continue;
-    const blob = await getAudioBlob(t.id);
-    if (blob) {
-      result[t.id] = URL.createObjectURL(blob);
-    }
-  }
-  return result;
+export async function clearBlobs(): Promise<void> {
+  if (!isBrowser() || !("indexedDB" in window)) return;
+  const db = await openDB();
+  await new Promise<void>((res, rej) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).clear();
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+  db.close();
+}
+
+/** Strip non-serializable fields from tracks before persisting. */
+export function sanitizeTracksForSave(tracks: Track[]): Track[] {
+  return tracks.map((tr) =>
+    tr.source === "upload"
+      ? {
+          id: tr.id,
+          source: "upload",
+          title: tr.title,
+          duration: tr.duration,
+          note: tr.note,
+          blobName: tr.blobName,
+          mimeType: tr.mimeType,
+          fileSize: tr.fileSize,
+        }
+      : {
+          id: tr.id,
+          source: "youtube",
+          title: tr.title,
+          duration: tr.duration,
+          note: tr.note,
+          youtubeId: tr.youtubeId,
+          url: tr.url,
+        },
+  );
 }

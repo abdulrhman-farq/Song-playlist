@@ -1,43 +1,184 @@
 "use client";
 
-import { GlobeIcon, SparkleIcon } from "@/components/icons";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from "react";
+import {
+  IconCheck,
+  IconClose,
+  IconExport,
+  IconGlobe,
+  IconImport,
+  IconSparkle,
+  IconTrash,
+  LogoMark,
+  OrnamentMark,
+} from "@/components/icons";
+import { dir as dirOf, type Strings } from "@/lib/i18n";
 import type { Language } from "@/types";
 
 interface Props {
+  playlistName: string;
+  onRename: (name: string) => void;
+  t: Strings;
   lang: Language;
   onToggleLang: () => void;
+  onImport: () => void;
+  onExport: () => void;
+  onSamples: () => void;
+  onClearAll: () => void;
+  hasTracks: boolean;
 }
 
-export default function Header({ lang, onToggleLang }: Props) {
+export default function Header({
+  playlistName,
+  onRename,
+  t,
+  lang,
+  onToggleLang,
+  onImport,
+  onExport,
+  onSamples,
+  onClearAll,
+  hasTracks,
+}: Props) {
+  const direction = dirOf(lang);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(playlistName);
+
+  useEffect(() => setDraft(playlistName), [playlistName]);
+
+  function commit() {
+    const v = (draft || "").trim();
+    onRename(v || t.untitled);
+    setEditing(false);
+  }
+
   return (
-    <header className="flex items-center justify-between gap-4 pt-8 pb-6">
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-gold-300 to-gold-600 flex items-center justify-center text-ink-900 shadow-gold">
-          <SparkleIcon width={22} height={22} />
-        </div>
-        <div>
-          <h1
-            className={`text-2xl sm:text-3xl leading-tight ${
-              lang === "ar" ? "font-bold" : "font-serif font-semibold"
-            } text-cream-50`}
+    <header className="relative px-8 pt-6 pb-8">
+      {/* Top action bar */}
+      <div className="flex justify-between items-center gap-3 mb-6 flex-wrap">
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={onToggleLang}
+          title={t.language}
+          style={{ gap: 6 }}
+        >
+          <IconGlobe size={13} />
+          <span>{lang === "ar" ? "EN" : "ع"}</span>
+        </button>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button type="button" className="btn-ghost" onClick={onImport}>
+            <IconImport size={13} />
+            <span>{t.importJson}</span>
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={onExport}
+            disabled={!hasTracks}
           >
-            {t(lang, "appTitle")}
-          </h1>
-          <p className="text-xs sm:text-sm text-cream-100/55 mt-0.5">
-            {t(lang, "appSubtitle")}
-          </p>
+            <IconExport size={13} />
+            <span>{t.exportJson}</span>
+          </button>
+          <button type="button" className="btn-ghost" onClick={onSamples}>
+            <IconSparkle size={13} />
+            <span>{t.sample}</span>
+          </button>
+          {hasTracks && (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={onClearAll}
+              style={{
+                color: "#C97B5B",
+                borderColor: "rgba(201,123,91,0.35)",
+              }}
+            >
+              <IconTrash size={13} />
+              <span>{t.clearAll}</span>
+            </button>
+          )}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onToggleLang}
-        className="ghost-button rounded-full px-4 py-2 text-sm inline-flex items-center gap-2"
-        aria-label="Toggle language"
-      >
-        <GlobeIcon width={16} height={16} />
-        <span>{t(lang, "languageToggle")}</span>
-      </button>
+
+      <div className="flex flex-col items-center gap-2">
+        <div className="label-tracked">{t.eyebrow}</div>
+        <div className="flex items-center gap-3 mt-1">
+          <LogoMark size={32} />
+        </div>
+        <h1
+          className="font-italiana text-[44px] leading-none mt-1"
+          style={{ color: "#D89274", letterSpacing: "0.04em" }}
+        >
+          {t.coupleAr}
+        </h1>
+        <div
+          className="font-cinzel text-[10px] mt-1"
+          style={{
+            letterSpacing: "0.42em",
+            color: "#8C6A4F",
+            textTransform: "uppercase",
+          }}
+        >
+          {t.coupleLatin}
+        </div>
+        <div className="divider-orn mt-2">
+          <OrnamentMark />
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          <div className="label-tracked">{t.playlistLabel}</div>
+        </div>
+        {editing ? (
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              autoFocus
+              className="input-elegant text-center"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              style={{
+                minWidth: 280,
+                fontFamily:
+                  direction === "rtl"
+                    ? "'Markazi Text', 'Amiri', serif"
+                    : "'Cormorant Garamond', serif",
+                fontStyle: "italic",
+                fontSize: 22,
+              }}
+            />
+            <button
+              type="button"
+              className="btn-iconic"
+              onClick={commit}
+              title={t.save}
+            >
+              <IconCheck size={16} />
+            </button>
+            <button
+              type="button"
+              className="btn-iconic"
+              onClick={() => setEditing(false)}
+              title={t.cancel}
+            >
+              <IconClose size={16} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="font-cormorant italic text-[28px] mt-1 px-3 py-1 rounded hover:bg-ivory/60 transition"
+            style={{ color: "#3A2C20" }}
+            onClick={() => setEditing(true)}
+            title={t.editTitle}
+          >
+            {playlistName || t.untitled}
+          </button>
+        )}
+      </div>
     </header>
   );
 }

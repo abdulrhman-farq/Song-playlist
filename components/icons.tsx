@@ -1,181 +1,190 @@
 import type { SVGProps } from "react";
 
-const base = {
-  width: 20,
-  height: 20,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.8,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
+interface IconProps extends Omit<SVGProps<SVGSVGElement>, "size"> {
+  size?: number;
+}
 
-export function PlayIcon(props: SVGProps<SVGSVGElement>) {
+function Svg({
+  size = 18,
+  fill = "none",
+  stroke = "currentColor",
+  strokeWidth = 1.5,
+  children,
+  ...rest
+}: IconProps & { children: React.ReactNode }) {
   return (
-    <svg {...base} {...props}>
-      <polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={fill}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...rest}
+    >
+      {children}
     </svg>
   );
 }
 
-export function PauseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none" />
-      <rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+export const IconPlay = (p: IconProps) => (
+  <Svg {...p} fill="currentColor" stroke="none">
+    <path d="M7 5.5v13l11-6.5z" />
+  </Svg>
+);
+export const IconPause = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M8 5v14M16 5v14" />
+  </Svg>
+);
+export const IconPrev = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 5v14M19 5l-9 7 9 7z" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconNext = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M17 5v14M5 5l9 7-9 7z" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconVol = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 9v6h4l5 4V5L8 9H4z" />
+    <path d="M16 8.5a4.5 4.5 0 0 1 0 7" />
+    <path d="M18.5 6a8 8 0 0 1 0 12" />
+  </Svg>
+);
+export const IconMute = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 9v6h4l5 4V5L8 9H4z" />
+    <path d="M16 9l5 6M21 9l-5 6" />
+  </Svg>
+);
+export const IconUpload = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 16V4M7 9l5-5 5 5" />
+    <path d="M5 18h14" />
+  </Svg>
+);
+export const IconYT = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2.5" y="6" width="19" height="12" rx="3" />
+    <path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconImport = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 4v12M7 11l5 5 5-5" />
+    <path d="M5 20h14" />
+  </Svg>
+);
+export const IconExport = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 20V8M7 13l5-5 5 5" />
+    <path d="M5 4h14" />
+  </Svg>
+);
+export const IconTrash = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+  </Svg>
+);
+export const IconEdit = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 20h4l11-11-4-4L4 16v4z" />
+  </Svg>
+);
+export const IconDrag = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none" />
+  </Svg>
+);
+export const IconPlus = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Svg>
+);
+export const IconClose = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Svg>
+);
+export const IconCheck = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 12l5 5L20 7" />
+  </Svg>
+);
+export const IconMusic = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9 18V6l10-2v12" />
+    <circle cx="6" cy="18" r="2.5" fill="currentColor" stroke="currentColor" />
+    <circle cx="16" cy="16" r="2.5" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconGlobe = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+  </Svg>
+);
+export const IconSparkle = (p: IconProps) => (
+  <Svg {...p}>
+    <path
+      d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"
+      fill="currentColor"
+      stroke="currentColor"
+    />
+  </Svg>
+);
+export const IconShuffle = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 6h4l10 12h4M3 18h4L17 6h4M18 3l3 3-3 3M18 15l3 3-3 3" />
+  </Svg>
+);
+export const IconRepeat = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" />
+  </Svg>
+);
 
-export function NextIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polygon points="5 4 17 12 5 20 5 4" fill="currentColor" stroke="none" />
-      <rect x="18" y="4" width="2" height="16" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+/** Small ornamental petal/diamond used in divider-orn and the header. */
+export const OrnamentMark = ({ size = 10, color = "#D89274" }: { size?: number; color?: string }) => (
+  <svg viewBox="0 0 14 14" width={size} height={size} aria-hidden="true">
+    <path d="M7 1 Q3 7 7 13 Q11 7 7 1Z" fill={color} />
+  </svg>
+);
 
-export function PrevIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polygon points="19 4 7 12 19 20 19 4" fill="currentColor" stroke="none" />
-      <rect x="4" y="4" width="2" height="16" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-export function VolumeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polygon points="3 10 7 10 12 5 12 19 7 14 3 14 3 10" fill="currentColor" stroke="none" />
-      <path d="M16 8a5 5 0 0 1 0 8" />
-      <path d="M18 5a9 9 0 0 1 0 14" />
-    </svg>
-  );
-}
-
-export function VolumeMuteIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polygon points="3 10 7 10 12 5 12 19 7 14 3 14 3 10" fill="currentColor" stroke="none" />
-      <line x1="16" y1="8" x2="22" y2="16" />
-      <line x1="22" y1="8" x2="16" y2="16" />
-    </svg>
-  );
-}
-
-export function UploadIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3v12" />
-      <polyline points="7 8 12 3 17 8" />
-      <path d="M5 19h14" />
-    </svg>
-  );
-}
-
-export function YouTubeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-      <polygon points="10 9 16 12 10 15 10 9" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-export function TrashIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-    </svg>
-  );
-}
-
-export function EditIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  );
-}
-
-export function GripIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="9" cy="6" r="1" fill="currentColor" />
-      <circle cx="15" cy="6" r="1" fill="currentColor" />
-      <circle cx="9" cy="12" r="1" fill="currentColor" />
-      <circle cx="15" cy="12" r="1" fill="currentColor" />
-      <circle cx="9" cy="18" r="1" fill="currentColor" />
-      <circle cx="15" cy="18" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-export function ArrowUpIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polyline points="6 14 12 8 18 14" />
-    </svg>
-  );
-}
-
-export function ArrowDownIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polyline points="6 10 12 16 18 10" />
-    </svg>
-  );
-}
-
-export function CheckIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <polyline points="4 12 10 18 20 6" />
-    </svg>
-  );
-}
-
-export function XIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
-    </svg>
-  );
-}
-
-export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3v12" />
-      <polyline points="7 10 12 15 17 10" />
-      <path d="M5 19h14" />
-    </svg>
-  );
-}
-
-export function GlobeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18" />
-      <path d="M12 3a13 13 0 0 1 0 18a13 13 0 0 1 0-18" />
-    </svg>
-  );
-}
-
-export function SparkleIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3l1.5 5L19 9.5l-5 1.5L12 16l-2-5L5 9.5l5-1L12 3z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+/** Logo monogram — small framed mark used in the header. */
+export const LogoMark = ({ size = 32 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 64 64"
+    fill="none"
+    aria-hidden="true"
+    style={{ opacity: 0.85 }}
+  >
+    <circle cx="32" cy="32" r="30" stroke="#D89274" strokeWidth="0.8" />
+    <circle cx="32" cy="32" r="24" stroke="#B8956A" strokeWidth="0.5" />
+    <path
+      d="M32 8 Q22 32 32 56 Q42 32 32 8Z"
+      fill="none"
+      stroke="#D89274"
+      strokeWidth="0.8"
+    />
+    <path
+      d="M8 32 Q32 22 56 32 Q32 42 8 32Z"
+      fill="none"
+      stroke="#D89274"
+      strokeWidth="0.8"
+    />
+    <circle cx="32" cy="32" r="3" fill="#D89274" />
+  </svg>
+);

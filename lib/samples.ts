@@ -1,45 +1,38 @@
-import type { Playlist } from "@/types";
+import type { Track } from "@/types";
 import { uid } from "@/lib/format";
 
 /**
- * Build a small starter playlist made entirely of YouTube embeds so it
- * works the first time the app loads — no uploads required.
- *
- * The picks are timeless wedding/processional pieces that are widely
- * known and embeddable on YouTube.
+ * A small starter set of YouTube embeds (no uploads required) so the
+ * app is usable the moment it loads.
  */
-export function createSamplePlaylist(): Playlist {
-  const now = new Date().toISOString();
-  return {
-    id: uid(),
-    name: "Wedding Day",
-    createdAt: now,
-    updatedAt: now,
-    tracks: [
-      {
-        id: uid(),
-        source: "youtube",
-        title: "Canon in D — Pachelbel",
-        videoId: "Ptk_1Dc2iPY",
-        url: "https://www.youtube.com/watch?v=Ptk_1Dc2iPY",
-        addedAt: now,
-      },
-      {
-        id: uid(),
-        source: "youtube",
-        title: "Wedding March — Mendelssohn",
-        videoId: "EHXVxL0gxxg",
-        url: "https://www.youtube.com/watch?v=EHXVxL0gxxg",
-        addedAt: now,
-      },
-      {
-        id: uid(),
-        source: "youtube",
-        title: "A Thousand Years — The Piano Guys",
-        videoId: "DcHKOC64KnE",
-        url: "https://www.youtube.com/watch?v=DcHKOC64KnE",
-        addedAt: now,
-      },
-    ],
-  };
+export function createSamples(): Track[] {
+  return [
+    {
+      id: uid(),
+      source: "youtube",
+      title: "الزفّة — Wedding Procession",
+      youtubeId: "TpiUmTYqxk0",
+      url: "https://www.youtube.com/watch?v=TpiUmTYqxk0",
+      duration: null,
+      note: "sample · ceremony",
+    },
+    {
+      id: uid(),
+      source: "youtube",
+      title: "Canon in D — Pachelbel",
+      youtubeId: "NlprozGcs80",
+      url: "https://www.youtube.com/watch?v=NlprozGcs80",
+      duration: null,
+      note: "sample · classical",
+    },
+    {
+      id: uid(),
+      source: "youtube",
+      title: "A Thousand Years — Acoustic",
+      youtubeId: "rtOvBOTyX00",
+      url: "https://www.youtube.com/watch?v=rtOvBOTyX00",
+      duration: null,
+      note: "sample · reception",
+    },
+  ];
 }

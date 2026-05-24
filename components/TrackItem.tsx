@@ -1,253 +1,243 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckIcon,
-  EditIcon,
-  GripIcon,
-  PauseIcon,
-  PlayIcon,
-  TrashIcon,
-  XIcon,
-  YouTubeIcon,
+  IconDrag,
+  IconEdit,
+  IconMusic,
+  IconPlay,
+  IconTrash,
+  IconUpload,
+  IconYT,
 } from "@/components/icons";
-import { formatDuration } from "@/lib/format";
-import { t } from "@/lib/i18n";
-import type { Language, Track } from "@/types";
-import { youtubeThumbnail } from "@/lib/youtube";
+import { fmtTime } from "@/lib/format";
+import { ytThumbSmall } from "@/lib/youtube";
+import type { Strings } from "@/lib/i18n";
+import type { Track } from "@/types";
+
+export type DropPos = "above" | "below" | null;
 
 interface Props {
-  lang: Language;
   track: Track;
-  index: number;
-  total: number;
-  isActive: boolean;
+  idx: number;
+  isCurrent: boolean;
   isPlaying: boolean;
-  isPlayable: boolean;
-  onPlayPause: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
-  onRename: (title: string) => void;
-  onDragStart: () => void;
-  onDragEnter: () => void;
-  onDragEnd: () => void;
-  isDragging: boolean;
-  isDropTarget: boolean;
+  t: Strings;
+  onPlay: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onDragStart: (e: React.DragEvent, id: string) => void;
+  onDragOver: (e: React.DragEvent, id: string) => void;
+  onDragLeave: (e: React.DragEvent, id: string) => void;
+  onDrop: (e: React.DragEvent, id: string) => void;
+  dropPos: DropPos;
 }
 
 export default function TrackItem({
-  lang,
   track,
-  index,
-  total,
-  isActive,
+  idx,
+  isCurrent,
   isPlaying,
-  isPlayable,
-  onPlayPause,
-  onMoveUp,
-  onMoveDown,
+  t,
+  onPlay,
   onDelete,
   onRename,
   onDragStart,
-  onDragEnter,
-  onDragEnd,
-  isDragging,
-  isDropTarget,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  dropPos,
 }: Props) {
   const [editing, setEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(track.title);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState(track.title);
 
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
+  useEffect(() => setDraft(track.title), [track.title]);
 
-  function commitRename() {
-    const value = draftTitle.trim();
-    if (value && value !== track.title) {
-      onRename(value);
-    }
+  function commit() {
+    const v = (draft || "").trim();
+    if (v && v !== track.title) onRename(track.id, v);
     setEditing(false);
   }
 
-  const sourceLabel = track.source === "youtube" ? t(lang, "sourceYouTube") : t(lang, "sourceUpload");
+  const dropClass =
+    dropPos === "above" ? "drop-above" : dropPos === "below" ? "drop-below" : "";
+
+  const ytId = track.source === "youtube" ? track.youtubeId : null;
+  const thumb = ytThumbSmall(ytId);
 
   return (
     <div
+      className={
+        "track-row group flex items-center gap-3 px-4 py-3 rounded hairline " +
+        dropClass
+      }
       draggable={!editing}
-      onDragStart={onDragStart}
-      onDragEnter={onDragEnter}
-      onDragOver={(e) => e.preventDefault()}
-      onDragEnd={onDragEnd}
-      onDrop={(e) => e.preventDefault()}
-      className={`group relative flex items-center gap-3 p-3 rounded-2xl border transition ${
-        isActive
-          ? "bg-gold-400/10 border-gold-400/50"
-          : "bg-ink-800/60 border-gold-400/10 hover:border-gold-400/30"
-      } ${isDragging ? "dragging" : ""} ${isDropTarget ? "drop-target" : ""}`}
+      onDragStart={(e) => onDragStart(e, track.id)}
+      onDragOver={(e) => onDragOver(e, track.id)}
+      onDragLeave={(e) => onDragLeave(e, track.id)}
+      onDrop={(e) => onDrop(e, track.id)}
+      style={{
+        background: isCurrent
+          ? "linear-gradient(90deg, rgba(216,146,116,0.10), rgba(216,146,116,0.04))"
+          : "rgba(250,245,236,0.6)",
+        borderColor: isCurrent
+          ? "rgba(216,146,116,0.40)"
+          : "rgba(58,44,32,0.10)",
+      }}
     >
+      {/* Drag handle */}
+      <div
+        className="cursor-grab active:cursor-grabbing text-taupe opacity-30 group-hover:opacity-100 transition"
+        title={t.dragHint}
+      >
+        <IconDrag size={14} />
+      </div>
+
+      {/* Index / play button */}
       <button
         type="button"
-        aria-label={t(lang, "moveUp")}
-        title={t(lang, "moveUp")}
-        className="icon-button cursor-grab"
+        onClick={() => onPlay(track.id)}
+        className="relative flex items-center justify-center rounded"
+        style={{
+          width: 40,
+          height: 40,
+          background: "rgba(244,236,223,0.6)",
+          border: "0.5px solid rgba(58,44,32,0.12)",
+        }}
+        title={t.play}
       >
-        <GripIcon width={18} height={18} />
+        {isCurrent && isPlaying ? (
+          <span className="eq">
+            <span />
+            <span />
+            <span />
+            <span />
+          </span>
+        ) : (
+          <>
+            <span
+              className="font-cinzel text-[10px] group-hover:opacity-0 transition"
+              style={{ color: "#8C6A4F", letterSpacing: "0.1em" }}
+            >
+              {String(idx + 1).padStart(2, "0")}
+            </span>
+            <span
+              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+              style={{ color: "#D89274" }}
+            >
+              <IconPlay size={14} />
+            </span>
+          </>
+        )}
       </button>
 
-      <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-ink-700 border border-gold-400/15">
-        {track.source === "youtube" ? (
+      {/* Artwork */}
+      <div
+        className="rounded overflow-hidden flex-shrink-0"
+        style={{
+          width: 44,
+          height: 44,
+          background: "linear-gradient(135deg, #F4ECDF 0%, #E5D5BC 100%)",
+          border: "0.5px solid rgba(58,44,32,0.12)",
+        }}
+      >
+        {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={youtubeThumbnail(track.videoId)}
+            src={thumb}
             alt=""
             className="w-full h-full object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gold-300/70">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M9 18V6l11-2v12" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="17" cy="16" r="3" />
-            </svg>
+          <div className="w-full h-full flex items-center justify-center text-brownSoft">
+            <IconMusic size={18} />
           </div>
         )}
-        <button
-          type="button"
-          onClick={onPlayPause}
-          disabled={!isPlayable}
-          aria-label={isActive && isPlaying ? t(lang, "pause") : t(lang, "play")}
-          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition disabled:hidden text-cream-50"
-        >
-          {isActive && isPlaying ? (
-            <PauseIcon width={20} height={20} />
-          ) : (
-            <PlayIcon width={20} height={20} />
-          )}
-        </button>
       </div>
 
+      {/* Title + meta */}
       <div className="flex-1 min-w-0">
         {editing ? (
-          <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitRename();
-                if (e.key === "Escape") {
-                  setDraftTitle(track.title);
-                  setEditing(false);
-                }
-              }}
-              className="flex-1 bg-ink-900 border border-gold-400/40 rounded-lg px-2 py-1 text-cream-50 outline-none focus:border-gold-400 text-sm"
-            />
-            <button
-              type="button"
-              onClick={commitRename}
-              aria-label={t(lang, "save")}
-              className="icon-button text-gold-300"
-            >
-              <CheckIcon width={16} height={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDraftTitle(track.title);
-                setEditing(false);
-              }}
-              aria-label={t(lang, "cancel")}
-              className="icon-button"
-            >
-              <XIcon width={16} height={16} />
-            </button>
-          </div>
+          <input
+            autoFocus
+            className="input-elegant w-full"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            onBlur={commit}
+            style={{ padding: "6px 10px", fontSize: 16 }}
+          />
         ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <div
-                className={`truncate font-medium ${
-                  isActive ? "text-gold-200" : "text-cream-50"
-                }`}
-                title={track.title}
-              >
-                {track.title}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-cream-100/55 mt-0.5">
-              {track.source === "youtube" ? (
-                <span className="inline-flex items-center gap-1 text-gold-300/80">
-                  <YouTubeIcon width={12} height={12} />
-                  {sourceLabel}
-                </span>
-              ) : (
-                <span className="text-gold-300/80">{sourceLabel}</span>
-              )}
-              <span className="opacity-40">·</span>
-              <span>{formatDuration(track.duration)}</span>
-              {!isPlayable && (
-                <>
-                  <span className="opacity-40">·</span>
-                  <span className="text-red-300" title={t(lang, "unplayableHint")}>
-                    {t(lang, "unplayable")}
-                  </span>
-                </>
-              )}
-            </div>
-          </>
+          <button
+            type="button"
+            className="font-cormorant text-[19px] truncate w-full text-left hover:text-peachDeep transition"
+            style={{
+              color: isCurrent ? "#D89274" : "#3A2C20",
+              fontStyle: isCurrent ? "italic" : "normal",
+            }}
+            onDoubleClick={() => setEditing(true)}
+            onClick={() => onPlay(track.id)}
+            title={track.title}
+          >
+            {track.title}
+          </button>
         )}
+        <div className="flex items-center gap-2 mt-0.5">
+          <span
+            className={
+              "chip " + (track.source === "youtube" ? "youtube" : "upload")
+            }
+          >
+            {track.source === "youtube" ? (
+              <IconYT size={9} />
+            ) : (
+              <IconUpload size={9} />
+            )}
+            <span>
+              {track.source === "youtube" ? t.sourceYouTube : t.sourceUpload}
+            </span>
+          </span>
+          {track.note && (
+            <span className="text-xs text-taupe italic truncate">
+              {track.note}
+            </span>
+          )}
+        </div>
       </div>
 
-      {!editing && (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={index === 0}
-            aria-label={t(lang, "moveUp")}
-            title={t(lang, "moveUp")}
-            className="icon-button"
-          >
-            <ArrowUpIcon width={16} height={16} />
-          </button>
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            aria-label={t(lang, "moveDown")}
-            title={t(lang, "moveDown")}
-            className="icon-button"
-          >
-            <ArrowDownIcon width={16} height={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            aria-label={t(lang, "rename")}
-            title={t(lang, "rename")}
-            className="icon-button"
-          >
-            <EditIcon width={16} height={16} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={t(lang, "delete")}
-            title={t(lang, "delete")}
-            className="icon-button hover:!text-red-300"
-          >
-            <TrashIcon width={16} height={16} />
-          </button>
-        </div>
-      )}
+      {/* Duration */}
+      <div
+        className="text-sm text-brownSoft tnum"
+        style={{ minWidth: 50, textAlign: "right" }}
+      >
+        {fmtTime(track.duration)}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1 opacity-30 group-hover:opacity-100 transition">
+        <button
+          type="button"
+          className="btn-iconic"
+          style={{ width: 32, height: 32 }}
+          onClick={() => setEditing(true)}
+          title={t.editTitle}
+        >
+          <IconEdit size={13} />
+        </button>
+        <button
+          type="button"
+          className="btn-iconic"
+          style={{ width: 32, height: 32, color: "#C97B5B" }}
+          onClick={() => onDelete(track.id)}
+          title={t.delete}
+        >
+          <IconTrash size={13} />
+        </button>
+      </div>
     </div>
   );
 }
