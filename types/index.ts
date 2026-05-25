@@ -101,4 +101,6 @@ export interface TimelineDoc {
   footerMessage: string;
   /** Signature display name (default: "رويـدا"). */
   signatureName: string;
+  /** Seed-version stamp; bumped when defaults change so storage auto-migrates. */
+  version?: number;
 }

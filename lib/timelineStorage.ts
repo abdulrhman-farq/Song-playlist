@@ -2,6 +2,13 @@ import type { TimelineDoc, TimelineEntry } from "@/types";
 import { uid } from "@/lib/format";
 
 const KEY = "wedding-playlist:v1:timeline";
+/**
+ * Bump this whenever `defaultTimeline()` changes meaningfully. On
+ * load, any persisted doc with a missing or older version is
+ * replaced by the current default. Once the user edits, the new
+ * version stamp is saved alongside their changes and survives.
+ */
+const SEED_VERSION = 2;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -14,6 +21,7 @@ export function loadTimeline(): TimelineDoc | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TimelineDoc;
     if (!parsed || !Array.isArray(parsed.entries)) return null;
+    if ((parsed.version ?? 0) < SEED_VERSION) return null;
     return parsed;
   } catch {
     return null;
@@ -23,15 +31,17 @@ export function loadTimeline(): TimelineDoc | null {
 export function saveTimeline(doc: TimelineDoc): void {
   if (!isBrowser()) return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(doc));
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify({ ...doc, version: SEED_VERSION }),
+    );
   } catch {
     /* quota — ignore */
   }
 }
 
 /**
- * Seed schedule used on first load. Mirrors the bride-prep cadence
- * from the original handoff but easy to overwrite.
+ * Real wedding-day schedule for رويـدا و عبدالرحمن (29 · 05 · 2026).
  */
 export function defaultTimeline(): TimelineDoc {
   const mk = (time: string, role: string, name: string): TimelineEntry => ({
@@ -41,14 +51,14 @@ export function defaultTimeline(): TimelineDoc {
     name,
   });
   return {
+    version: SEED_VERSION,
     entries: [
-      mk("1:00 PM", "الهيرستايلست", "لينا فهد"),
-      mk("2:00 PM", "صالون الأظافر", "Glowy Spa"),
-      mk("2:30 PM", "الميك أب مع", "غفران العلوان"),
-      mk("3:00 PM", "مساعدة العروس", "إيمان الربيع"),
-      mk("4:00 PM", "بداية التصوير مع", "هيفاء العيسى"),
-      mk("6:00 PM", "الانطلاق إلى القاعة", "زفّة"),
-      mk("8:00 PM", "بدء الحفل", "رويدا و عبدالرحمن"),
+      mk("4:30 PM", "ميك اب ارتست", "لينا البغدادية"),
+      mk("5:30 PM", "شعر", "نبيله"),
+      mk("6:00 PM", "مساعدة العروس", "فريق أيمان الربيع"),
+      mk("6:00 PM", "مصورة الجوال", "شهد"),
+      mk("7:00 PM", "المصورة", "نوف الظاهري"),
+      mk("11:30 PM", "", "الزفة"),
     ],
     footerMessage:
       "سعيدة بوجودكم معي في هذه اللحظات السعيدة،\nمتشوّقة لجميل حضوركم",
