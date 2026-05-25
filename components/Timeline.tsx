@@ -175,6 +175,79 @@ function Editable({
   );
 }
 
+/* Wraps a structural block (crest, ornament, etc.) and shows a
+   small × button on hover when in edit mode. Hidden blocks render
+   nothing. */
+function RemovableBlock({
+  hidden,
+  editing,
+  exporting,
+  onRemove,
+  label,
+  children,
+}: {
+  hidden: boolean;
+  editing: boolean;
+  exporting: boolean;
+  onRemove: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  if (hidden) return null;
+  return (
+    <div
+      style={{
+        position: "relative",
+        // Outline shows in edit mode so users can see the boundaries
+        outline:
+          editing && !exporting
+            ? "1px dashed rgba(216,146,116,0.18)"
+            : "none",
+        outlineOffset: 4,
+        borderRadius: 4,
+      }}
+    >
+      {children}
+      {editing && !exporting && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={label}
+          title={label}
+          style={{
+            position: "absolute",
+            top: -6,
+            insetInlineEnd: -6,
+            width: 22,
+            height: 22,
+            borderRadius: 999,
+            background: "var(--w-paper)",
+            border: "1px solid var(--w-line)",
+            color: "var(--w-rose)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(58,44,32,0.18)",
+            transition:
+              "transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.background = "var(--w-blush)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "var(--w-paper)";
+          }}
+        >
+          <IconClose size={11} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ── Main ──────────────────────────────────────────────────── */
 
 export default function Timeline({ lang, t, onClose }: Props) {
@@ -247,6 +320,26 @@ export default function Timeline({ lang, t, onClose }: Props) {
   function reset() {
     if (!confirm(t.timelineResetConfirm)) return;
     setDoc(defaultTimeline());
+  }
+
+  /** Update any string field on the doc. */
+  function setField<K extends keyof TimelineDoc>(key: K, value: TimelineDoc[K]) {
+    setDoc((d) => ({ ...d, [key]: value }));
+  }
+
+  /** Whether a structural block (crest, ornament, rings, signature)
+   *  is currently hidden. */
+  function isHidden(key: NonNullable<TimelineDoc["hiddenBlocks"]>[number]) {
+    return (doc.hiddenBlocks ?? []).includes(key);
+  }
+
+  function toggleBlock(key: NonNullable<TimelineDoc["hiddenBlocks"]>[number]) {
+    setDoc((d) => {
+      const set = new Set(d.hiddenBlocks ?? []);
+      if (set.has(key)) set.delete(key);
+      else set.add(key);
+      return { ...d, hiddenBlocks: [...set] };
+    });
   }
 
   async function exportAsImage() {
@@ -457,135 +550,189 @@ export default function Timeline({ lang, t, onClose }: Props) {
           {/* Inner hairline frame */}
           <div className="wed-frame" aria-hidden />
 
-          {/* Crest */}
-          <div
-            className="flex flex-col items-center"
-            style={{ gap: 6, marginTop: 6 }}
+          {/* Crest — removable */}
+          <RemovableBlock
+            hidden={isHidden("crest")}
+            editing={editing}
+            exporting={exporting}
+            onRemove={() => toggleBlock("crest")}
+            label={t.delete}
           >
-            <Crest />
-            <div className="wed-eyebrow" style={{ fontSize: 8.5 }}>
-              R · A · WEDDING
+            <div
+              className="flex flex-col items-center"
+              style={{ gap: 6, marginTop: 6 }}
+            >
+              <Crest />
+              {doc.crestEyebrow && (
+                <div className="wed-eyebrow" style={{ fontSize: 8.5 }}>
+                  <Editable
+                    value={doc.crestEyebrow}
+                    onChange={(v) => setField("crestEyebrow", v)}
+                    enabled={editing}
+                  />
+                </div>
+              )}
             </div>
-          </div>
+          </RemovableBlock>
 
-          {/* Date header — day of week + full date for clarity */}
-          <div
-            className="text-center"
-            style={{
-              fontFamily: "var(--w-serif-ar)",
-              fontSize: 17,
-              color: "var(--w-ink)",
-              lineHeight: 1.9,
-              fontWeight: 500,
-              marginTop: 16,
-            }}
-          >
-            الجمعة
-            <span
+          {/* Date header — Arabic + Latin halves are independently editable */}
+          {(doc.dateAr || doc.dateLatin) && (
+            <div
+              className="text-center"
               style={{
-                fontFamily: "var(--w-display-en)",
-                fontSize: 16,
-                letterSpacing: "0.22em",
-                color: "var(--w-rose)",
-                margin: "0 10px",
+                fontFamily: "var(--w-serif-ar)",
+                fontSize: 17,
+                color: "var(--w-ink)",
+                lineHeight: 1.9,
                 fontWeight: 500,
+                marginTop: 16,
               }}
             >
-              · FRIDAY ·
-            </span>
-            ٢٩ مايو
-            <span
-              style={{
-                fontFamily: "var(--w-display-en)",
-                fontSize: 16,
-                letterSpacing: "0.22em",
-                color: "var(--w-rose)",
-                margin: "0 8px",
-                fontWeight: 500,
-              }}
-            >
-              · 2026
-            </span>
-          </div>
+              {doc.dateAr && (
+                <Editable
+                  value={doc.dateAr}
+                  onChange={(v) => setField("dateAr", v)}
+                  enabled={editing}
+                />
+              )}
+              {doc.dateAr && doc.dateLatin && (
+                <span style={{ margin: "0 4px" }}> </span>
+              )}
+              {doc.dateLatin && (
+                <span
+                  style={{
+                    fontFamily: "var(--w-display-en)",
+                    fontSize: 16,
+                    letterSpacing: "0.22em",
+                    color: "var(--w-rose)",
+                    margin: "0 8px",
+                    fontWeight: 500,
+                  }}
+                >
+                  ·{" "}
+                  <Editable
+                    value={doc.dateLatin}
+                    onChange={(v) => setField("dateLatin", v)}
+                    enabled={editing}
+                  />
+                  {" "}·
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Names (Latin) */}
-          <div
-            dir="ltr"
-            className="text-center"
-            style={{
-              marginTop: 24,
-              marginBottom: 6,
-              fontFamily: "var(--w-display-en)",
-              color: "var(--w-brown)",
-              lineHeight: 0.95,
-            }}
-          >
-            <span
+          {(doc.brideName || doc.groomName) && (
+            <div
+              dir="ltr"
+              className="text-center"
               style={{
-                display: "block",
-                fontSize: 42,
-                fontFamily: "var(--w-serif-en)",
-                fontStyle: "italic",
-                letterSpacing: "0.01em",
-                color: "var(--w-peach-deep)",
-              }}
-            >
-              Ruwaida
-            </span>
-            <span
-              style={{
-                display: "block",
-                fontSize: 38,
+                marginTop: 24,
+                marginBottom: 6,
                 fontFamily: "var(--w-display-en)",
-                letterSpacing: "0.16em",
                 color: "var(--w-brown)",
-                marginTop: 2,
+                lineHeight: 0.95,
               }}
             >
-              &amp; ABDULRAHMAN
-            </span>
-          </div>
+              {doc.brideName && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 42,
+                    fontFamily: "var(--w-serif-en)",
+                    fontStyle: "italic",
+                    letterSpacing: "0.01em",
+                    color: "var(--w-peach-deep)",
+                  }}
+                >
+                  <Editable
+                    value={doc.brideName}
+                    onChange={(v) => setField("brideName", v)}
+                    enabled={editing}
+                  />
+                </span>
+              )}
+              {doc.groomName && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 38,
+                    fontFamily: "var(--w-display-en)",
+                    letterSpacing: "0.16em",
+                    color: "var(--w-brown)",
+                    marginTop: 2,
+                  }}
+                >
+                  <Editable
+                    value={doc.groomName}
+                    onChange={(v) => setField("groomName", v)}
+                    enabled={editing}
+                  />
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Arabic names */}
-          <div
-            className="text-center"
-            style={{
-              fontFamily: "var(--w-serif-ar)",
-              fontSize: 19,
-              color: "var(--w-brown)",
-              letterSpacing: "0.04em",
-              marginTop: 8,
-              fontWeight: 700,
-            }}
-          >
-            رويـدا و عبدالرحمن
-          </div>
-
-          {/* Ornament divider */}
-          <div className="flex justify-center" style={{ margin: "18px 0 6px" }}>
-            <OrnamentDivider />
-          </div>
-
-          {/* Appointments label — makes the purpose unambiguous when shared */}
-          <div
-            className="text-center"
-            style={{
-              marginTop: 8,
-              marginBottom: 2,
-            }}
-          >
-            <span
+          {doc.coupleArabic && (
+            <div
+              className="text-center"
               style={{
-                fontFamily: "var(--w-label-en)",
-                fontSize: 10,
-                letterSpacing: "0.42em",
-                textTransform: "uppercase",
-                color: "var(--w-brown-soft)",
+                fontFamily: "var(--w-serif-ar)",
+                fontSize: 19,
+                color: "var(--w-brown)",
+                letterSpacing: "0.04em",
+                marginTop: 8,
+                fontWeight: 700,
               }}
             >
-              المواعيد · APPOINTMENTS
-            </span>
-          </div>
+              <Editable
+                value={doc.coupleArabic}
+                onChange={(v) => setField("coupleArabic", v)}
+                enabled={editing}
+              />
+            </div>
+          )}
+
+          {/* Top ornament divider — removable */}
+          <RemovableBlock
+            hidden={isHidden("topOrnament")}
+            editing={editing}
+            exporting={exporting}
+            onRemove={() => toggleBlock("topOrnament")}
+            label={t.delete}
+          >
+            <div className="flex justify-center" style={{ margin: "18px 0 6px" }}>
+              <OrnamentDivider />
+            </div>
+          </RemovableBlock>
+
+          {/* Appointments label — editable, hides itself when cleared */}
+          {doc.appointmentsLabel && (
+            <div
+              className="text-center"
+              style={{
+                marginTop: 8,
+                marginBottom: 2,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--w-label-en)",
+                  fontSize: 10,
+                  letterSpacing: "0.42em",
+                  textTransform: "uppercase",
+                  color: "var(--w-brown-soft)",
+                }}
+              >
+                <Editable
+                  value={doc.appointmentsLabel}
+                  onChange={(v) => setField("appointmentsLabel", v)}
+                  enabled={editing}
+                />
+              </span>
+            </div>
+          )}
 
           {/* Timeline */}
           <div
@@ -759,79 +906,122 @@ export default function Timeline({ lang, t, onClose }: Props) {
             )}
           </div>
 
-          {/* Second ornament before footer */}
-          <div className="flex justify-center" style={{ margin: "4px 0" }}>
-            <OrnamentDivider />
-          </div>
-
-          {/* Rings */}
-          <div className="flex justify-center" style={{ margin: "10px 0 14px" }}>
-            <Rings />
-          </div>
-
-          {/* Footer message */}
-          <div
-            className="text-center"
-            style={{
-              fontFamily: "var(--w-serif-ar)",
-              fontSize: 15,
-              lineHeight: 1.95,
-              color: "var(--w-brown)",
-              padding: "0 22px",
-            }}
+          {/* Middle ornament — removable */}
+          <RemovableBlock
+            hidden={isHidden("midOrnament")}
+            editing={editing}
+            exporting={exporting}
+            onRemove={() => toggleBlock("midOrnament")}
+            label={t.delete}
           >
-            <Editable
-              multiline
-              value={doc.footerMessage}
-              onChange={(v) => setDoc((d) => ({ ...d, footerMessage: v }))}
-              enabled={editing}
-            />
-          </div>
+            <div className="flex justify-center" style={{ margin: "4px 0" }}>
+              <OrnamentDivider />
+            </div>
+          </RemovableBlock>
 
-          {/* Signature */}
-          <div
-            className="text-center"
-            style={{
-              marginTop: 22,
-              fontFamily: "var(--w-label-en)",
-              fontSize: 9.5,
-              color: "var(--w-brown-soft)",
-              letterSpacing: "0.42em",
-              textTransform: "uppercase",
-            }}
+          {/* Rings — removable */}
+          <RemovableBlock
+            hidden={isHidden("rings")}
+            editing={editing}
+            exporting={exporting}
+            onRemove={() => toggleBlock("rings")}
+            label={t.delete}
           >
-            عـــــروســـــكــــم
             <div
+              className="flex justify-center"
+              style={{ margin: "10px 0 14px" }}
+            >
+              <Rings />
+            </div>
+          </RemovableBlock>
+
+          {/* Footer message — editable, hides itself when cleared */}
+          {doc.footerMessage && (
+            <div
+              className="text-center"
               style={{
                 fontFamily: "var(--w-serif-ar)",
-                fontWeight: 700,
-                fontSize: 24,
-                color: "var(--w-peach-deep)",
-                letterSpacing: "0.04em",
-                display: "block",
-                marginTop: 6,
-                textTransform: "none",
+                fontSize: 15,
+                lineHeight: 1.95,
+                color: "var(--w-brown)",
+                padding: "0 22px",
               }}
             >
               <Editable
-                value={doc.signatureName}
-                onChange={(v) => setDoc((d) => ({ ...d, signatureName: v }))}
+                multiline
+                value={doc.footerMessage}
+                onChange={(v) => setField("footerMessage", v)}
                 enabled={editing}
               />
             </div>
+          )}
+
+          {/* Signature — removable whole block, also each line editable */}
+          <RemovableBlock
+            hidden={isHidden("signature")}
+            editing={editing}
+            exporting={exporting}
+            onRemove={() => toggleBlock("signature")}
+            label={t.delete}
+          >
             <div
+              className="text-center"
               style={{
-                fontFamily: "var(--w-display-en)",
-                fontSize: 11,
+                marginTop: 22,
+                fontFamily: "var(--w-label-en)",
+                fontSize: 9.5,
                 color: "var(--w-brown-soft)",
-                letterSpacing: "0.22em",
-                marginTop: 8,
-                textTransform: "none",
+                letterSpacing: "0.42em",
+                textTransform: "uppercase",
               }}
             >
-              R · A · 29 . 05 . 2026
+              {doc.signaturePreLabel && (
+                <Editable
+                  value={doc.signaturePreLabel}
+                  onChange={(v) => setField("signaturePreLabel", v)}
+                  enabled={editing}
+                />
+              )}
+              {doc.signatureName && (
+                <div
+                  style={{
+                    fontFamily: "var(--w-serif-ar)",
+                    fontWeight: 700,
+                    fontSize: 24,
+                    color: "var(--w-peach-deep)",
+                    letterSpacing: "0.04em",
+                    display: "block",
+                    marginTop: 6,
+                    textTransform: "none",
+                  }}
+                >
+                  <Editable
+                    value={doc.signatureName}
+                    onChange={(v) => setField("signatureName", v)}
+                    enabled={editing}
+                  />
+                </div>
+              )}
+              {doc.signatureFooter && (
+                <div
+                  style={{
+                    fontFamily: "var(--w-display-en)",
+                    fontSize: 11,
+                    color: "var(--w-brown-soft)",
+                    letterSpacing: "0.22em",
+                    marginTop: 8,
+                    textTransform: "none",
+                  }}
+                >
+                  <Editable
+                    value={doc.signatureFooter}
+                    onChange={(v) => setField("signatureFooter", v)}
+                    enabled={editing}
+                  />
+                </div>
+              )}
             </div>
-          </div>
+          </RemovableBlock>
 
           {/* Edit hint */}
           {editing && (

@@ -95,12 +95,51 @@ export interface TimelineEntry {
   name: string;
 }
 
+/**
+ * Every header / footer block on the printable timeline. Empty
+ * string for a field means the block is hidden — the user removed
+ * it. Reset-to-default restores all.
+ */
 export interface TimelineDoc {
+  // Header
+  /** Tracked label under the crest. Empty = hide. */
+  crestEyebrow: string;
+  /** Arabic side of the date line. */
+  dateAr: string;
+  /** Latin side of the date line. */
+  dateLatin: string;
+  /** Bride's first name in display italic (top of monogram). */
+  brideName: string;
+  /** Groom's name in display tracked caps. */
+  groomName: string;
+  /** Arabic couple name. */
+  coupleArabic: string;
+  /** Label above the appointments table. */
+  appointmentsLabel: string;
+
   entries: TimelineEntry[];
+
   /** Closing message above the signature. */
   footerMessage: string;
-  /** Signature display name (default: "رويـدا"). */
+  /** Tracked tag above the signature name. */
+  signaturePreLabel: string;
+  /** Signature display name. */
   signatureName: string;
+  /** Tracked footer line (date stamp). */
+  signatureFooter: string;
+
+  /**
+   * Which removable structural blocks the user has hidden.
+   * Editable-text removal is handled by setting the field above to "".
+   */
+  hiddenBlocks?: Array<
+    | "crest"
+    | "topOrnament"
+    | "midOrnament"
+    | "rings"
+    | "signature"
+  >;
+
   /** Seed-version stamp; bumped when defaults change so storage auto-migrates. */
   version?: number;
 }

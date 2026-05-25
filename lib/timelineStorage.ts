@@ -8,7 +8,7 @@ const KEY = "wedding-playlist:v1:timeline";
  * replaced by the current default. Once the user edits, the new
  * version stamp is saved alongside their changes and survives.
  */
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -52,6 +52,13 @@ export function defaultTimeline(): TimelineDoc {
   });
   return {
     version: SEED_VERSION,
+    crestEyebrow: "R · A · WEDDING",
+    dateAr: "الجمعة · ٢٩ مايو",
+    dateLatin: "FRIDAY · 2026",
+    brideName: "Ruwaida",
+    groomName: "& ABDULRAHMAN",
+    coupleArabic: "رويـدا و عبدالرحمن",
+    appointmentsLabel: "المواعيد · APPOINTMENTS",
     entries: [
       mk("4:30 PM", "ميك اب ارتست", "لينا البغدادية"),
       mk("5:30 PM", "شعر", "نبيله"),
@@ -62,7 +69,10 @@ export function defaultTimeline(): TimelineDoc {
     ],
     footerMessage:
       "سعيدة بوجودكم معي في هذه اللحظات السعيدة،\nمتشوّقة لجميل حضوركم",
+    signaturePreLabel: "عـــــروســـــكــــم",
     signatureName: "رويـدا",
+    signatureFooter: "R · A · 29 . 05 . 2026",
+    hiddenBlocks: [],
   };
 }
 
