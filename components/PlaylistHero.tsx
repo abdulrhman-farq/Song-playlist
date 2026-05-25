@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconCheck,
   IconClose,
   IconEdit,
-  IconHeart,
   IconMore,
   IconPause,
   IconPlay,
@@ -15,7 +14,9 @@ import {
   OrnamentMark,
 } from "@/components/icons";
 import { fmtTime } from "@/lib/format";
+import { computeCountdown } from "@/lib/countdown";
 import type { Strings } from "@/lib/i18n";
+import { useMagneticCursor } from "@/lib/useMagneticCursor";
 import type { Language, Track } from "@/types";
 
 interface Props {
@@ -43,7 +44,6 @@ export default function PlaylistHero({
   onRenamePlaylist,
   tracks,
   totalSeconds,
-  hasCurrent,
   isPlaying,
   shuffle,
   repeat,
@@ -51,11 +51,12 @@ export default function PlaylistHero({
   onToggleShuffle,
   onToggleRepeat,
   onMore,
-  hasYouTubeTracks,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(playlistName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const magnet = useMagneticCursor();
+
   useEffect(() => setDraft(playlistName), [playlistName]);
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -69,38 +70,40 @@ export default function PlaylistHero({
 
   const uploadCount = tracks.filter((x) => x.source === "upload").length;
   const ytCount = tracks.filter((x) => x.source === "youtube").length;
-  const playLabel = isPlaying ? t.pause : tracks.length === 0 ? t.play : t.play;
+  const countdown = useMemo(() => computeCountdown(t), [t]);
+  const playLabel = isPlaying ? t.pause : t.play;
   const ButtonIcon = isPlaying ? IconPause : IconPlay;
 
   return (
     <section
       id="hero"
-      className="relative overflow-hidden rounded-2xl fade-up"
+      className="relative overflow-hidden contain-paint fade-up magnetic"
+      onMouseMove={magnet.onMouseMove}
       style={{
-        borderRadius: 24,
+        borderRadius: "var(--rad-2xl)",
         border: "1px solid var(--line-subtle)",
-        minHeight: 380,
+        minHeight: 420,
       }}
     >
-      {/* Background gradient layer */}
-      <div className="absolute inset-0 hero-gradient" aria-hidden />
+      {/* Cinematic gradient backdrop */}
+      <div className="absolute inset-0 hero-gradient gpu" aria-hidden />
 
-      {/* Aurora glow behind artwork */}
+      {/* Aurora — gpu-promoted, transform/opacity only */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none gpu"
         aria-hidden
         style={{
-          insetInlineStart: "8%",
-          top: "14%",
-          width: 260,
-          height: 260,
+          insetInlineStart: "6%",
+          top: "12%",
+          width: 320,
+          height: 320,
           opacity: 0.55,
         }}
       >
         <div className="aurora w-full h-full rounded-full" />
       </div>
 
-      {/* Fine grain & vignette overlays */}
+      {/* Soft vignette */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
@@ -111,93 +114,121 @@ export default function PlaylistHero({
       />
 
       {/* Content */}
-      <div className="relative grid grid-cols-1 md:grid-cols-[260px,1fr] gap-8 p-8 md:p-10">
-        {/* Artwork */}
+      <div
+        className="relative grid grid-cols-1 md:grid-cols-[260px,1fr] gap-8 md:gap-10"
+        style={{ padding: "var(--space-8) var(--space-7)" }}
+      >
+        {/* Artwork — breathing + ring pulse when playing */}
         <div className="flex md:block justify-center">
           <div
-            className="hero-art relative overflow-hidden"
+            className="relative breathe gpu"
             style={{
-              width: 220,
-              height: 220,
-              borderRadius: 18,
-              boxShadow:
-                "0 30px 60px -20px rgba(0,0,0,0.7), 0 12px 30px -10px rgba(212,175,55,0.35), inset 0 0 0 1px rgba(255,255,255,0.08)",
+              width: 240,
+              height: 240,
+              borderRadius: 22,
             }}
           >
+            {isPlaying && (
+              <>
+                <span className="ring-pulse" />
+                <span className="ring-pulse delay-1" />
+                <span className="ring-pulse delay-2" />
+                <span
+                  className="now-halo"
+                  style={{ inset: -16 }}
+                  aria-hidden
+                />
+              </>
+            )}
             <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ color: "rgba(255,255,255,0.92)" }}
+              className="hero-art relative overflow-hidden gpu"
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: 22,
+                boxShadow:
+                  "0 30px 60px -20px rgba(0,0,0,0.7), 0 12px 30px -10px rgba(212,175,55,0.35), inset 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
             >
-              <svg
-                viewBox="0 0 100 100"
-                width="120"
-                height="120"
-                aria-hidden
-                style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.4))" }}
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ color: "rgba(255,255,255,0.92)" }}
               >
-                <defs>
-                  <linearGradient id="art-stroke" x1="0%" x2="100%">
-                    <stop offset="0%" stopColor="#fff7d6" />
-                    <stop offset="50%" stopColor="#d4af37" />
-                    <stop offset="100%" stopColor="#fff7d6" />
-                  </linearGradient>
-                </defs>
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke="url(#art-stroke)"
-                  strokeWidth="0.6"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="30"
-                  fill="none"
-                  stroke="url(#art-stroke)"
-                  strokeWidth="0.4"
-                  opacity="0.65"
-                />
-                <path
-                  d="M50 18 Q35 50 50 82 Q65 50 50 18Z"
-                  fill="none"
-                  stroke="url(#art-stroke)"
-                  strokeWidth="0.5"
-                />
-                <path
-                  d="M18 50 Q50 35 82 50 Q50 65 18 50Z"
-                  fill="none"
-                  stroke="url(#art-stroke)"
-                  strokeWidth="0.5"
-                />
-                <text
-                  x="50"
-                  y="58"
-                  textAnchor="middle"
-                  fontFamily="Cormorant Garamond, serif"
-                  fontSize="20"
-                  fontStyle="italic"
-                  fill="url(#art-stroke)"
+                <svg
+                  viewBox="0 0 100 100"
+                  width="135"
+                  height="135"
+                  aria-hidden
+                  style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.45))" }}
                 >
-                  R &amp; A
-                </text>
-              </svg>
+                  <defs>
+                    <linearGradient id="art-stroke" x1="0%" x2="100%">
+                      <stop offset="0%" stopColor="#fff7d6" />
+                      <stop offset="50%" stopColor="#d4af37" />
+                      <stop offset="100%" stopColor="#fff7d6" />
+                    </linearGradient>
+                  </defs>
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="url(#art-stroke)"
+                    strokeWidth="0.6"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="30"
+                    fill="none"
+                    stroke="url(#art-stroke)"
+                    strokeWidth="0.4"
+                    opacity="0.65"
+                  />
+                  <path
+                    d="M50 18 Q35 50 50 82 Q65 50 50 18Z"
+                    fill="none"
+                    stroke="url(#art-stroke)"
+                    strokeWidth="0.5"
+                  />
+                  <path
+                    d="M18 50 Q50 35 82 50 Q50 65 18 50Z"
+                    fill="none"
+                    stroke="url(#art-stroke)"
+                    strokeWidth="0.5"
+                  />
+                  <text
+                    x="50"
+                    y="58"
+                    textAnchor="middle"
+                    fontFamily="Cormorant Garamond, serif"
+                    fontSize="20"
+                    fontStyle="italic"
+                    fill="url(#art-stroke)"
+                  >
+                    R &amp; A
+                  </text>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Text + actions */}
         <div className="flex flex-col justify-end">
-          <div className="eyebrow flex items-center gap-2">
-            <IconSparkle size={11} />
-            <span>{t.eyebrow}</span>
+          {/* Eyebrow row with countdown chip */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="eyebrow flex items-center gap-2">
+              <IconSparkle size={11} />
+              <span>{t.eyebrow}</span>
+            </div>
+            <CountdownChip label={countdown.label} days={countdown.daysAway} />
           </div>
 
           <h1
-            className="font-arabic-display mt-4 leading-none"
+            className="font-arabic-display mt-4 leading-none gpu"
             style={{
-              fontSize: "clamp(40px, 6vw, 84px)",
+              fontSize: "var(--fs-hero)",
               letterSpacing: "0.01em",
               color: "var(--text)",
             }}
@@ -208,16 +239,28 @@ export default function PlaylistHero({
           <div
             className="mt-2 font-display italic"
             style={{
-              fontSize: "clamp(20px, 2.6vw, 30px)",
+              fontSize: "var(--fs-3xl)",
               color: "var(--gold-300)",
+              fontWeight: 500,
             }}
           >
             {t.coupleLatin}
           </div>
 
-          <div className="mt-4 flex items-center gap-2 flex-wrap text-[12px]" style={{ color: "var(--text-muted)" }}>
-            <span>{t.subtitle}</span>
-            <OrnamentMark size={6} color="#d4af37" />
+          <div
+            className="mt-3 italic shimmer-text font-display"
+            style={{
+              fontSize: "var(--fs-lg)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {t.inTheAir}
+          </div>
+
+          <div
+            className="mt-4 flex items-center gap-2 flex-wrap"
+            style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}
+          >
             <span>
               {tracks.length} {tracks.length === 1 ? t.track : t.tracks}
             </span>
@@ -299,43 +342,43 @@ export default function PlaylistHero({
           <div className="mt-7 flex items-center gap-3 flex-wrap">
             <button
               type="button"
-              className="btn-base btn-play"
+              className="btn-base btn-play gpu"
               onClick={onPrimaryPlay}
               disabled={tracks.length === 0}
-              style={{ width: 60, height: 60 }}
+              style={{ width: 64, height: 64 }}
               aria-label={playLabel}
               title={playLabel}
             >
-              <ButtonIcon size={26} />
+              <ButtonIcon size={28} />
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               data-active={shuffle ? "true" : "false"}
               onClick={onToggleShuffle}
               title={t.shuffle}
-              style={{ width: 42, height: 42 }}
+              style={{ width: 44, height: 44 }}
               disabled={tracks.length === 0}
             >
               <IconShuffle size={18} />
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               data-active={repeat ? "true" : "false"}
               onClick={onToggleRepeat}
               title={t.repeat}
-              style={{ width: 42, height: 42 }}
+              style={{ width: 44, height: 44 }}
               disabled={tracks.length === 0}
             >
               <IconRepeat size={18} />
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               onClick={onMore}
               title="More"
-              style={{ width: 42, height: 42 }}
+              style={{ width: 44, height: 44 }}
               aria-label="More"
             >
               <IconMore size={20} />
@@ -344,5 +387,47 @@ export default function PlaylistHero({
         </div>
       </div>
     </section>
+  );
+}
+
+function CountdownChip({ label, days }: { label: string; days: number }) {
+  const isClose = days >= 0 && days <= 3;
+  return (
+    <span
+      className="inline-flex items-center gap-2 px-3 py-1 rounded-full"
+      style={{
+        fontSize: 11,
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        fontFamily: "Inter, sans-serif",
+        fontWeight: 500,
+        background: isClose
+          ? "rgba(212,175,55,0.14)"
+          : "rgba(255,255,255,0.04)",
+        color: isClose ? "var(--gold-200)" : "var(--text-dim)",
+        border: `1px solid ${
+          isClose ? "rgba(212,175,55,0.45)" : "var(--line-soft)"
+        }`,
+        boxShadow: isClose
+          ? "0 10px 24px -14px rgba(212,175,55,0.45)"
+          : undefined,
+      }}
+    >
+      {isClose && (
+        <span
+          aria-hidden
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: "var(--gold-300)",
+            boxShadow: "0 0 8px var(--gold-300)",
+            display: "inline-block",
+          }}
+          className="breathe"
+        />
+      )}
+      <span>{label}</span>
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
+import { memo, useEffect, useRef, useState } from "react";
 import {
-  IconMore,
   IconMusic,
   IconMute,
   IconNext,
@@ -43,7 +43,7 @@ interface Props {
   onToggleAutoplay: () => void;
 }
 
-export default function BottomPlayer({
+function BottomPlayerImpl({
   lang,
   t,
   tracks,
@@ -67,74 +67,123 @@ export default function BottomPlayer({
   onToggleAutoplay,
 }: Props) {
   const direction = dirOf(lang);
-  const current = currentId ? tracks.find((x) => x.id === currentId) ?? null : null;
+  const current = currentId
+    ? tracks.find((x) => x.id === currentId) ?? null
+    : null;
   const idx = current ? tracks.findIndex((x) => x.id === current.id) : -1;
   const ytId = current?.source === "youtube" ? current.youtubeId : null;
   const thumb = ytThumbSmall(ytId);
+
+  // Text-cross fade key — bumps whenever current track changes
+  const [crossKey, setCrossKey] = useState(0);
+  const prevIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentId !== prevIdRef.current) {
+      prevIdRef.current = currentId;
+      setCrossKey((k) => k + 1);
+    }
+  }, [currentId]);
+
+  // Local seek state so dragging the bar doesn't fight live updates
+  const [seekValue, setSeekValue] = useState<number | null>(null);
+  const dragRef = useRef(false);
+
+  const displayPos = seekValue ?? position ?? 0;
   const progressPct =
-    duration > 0 ? Math.min(100, ((position || 0) / duration) * 100) : 0;
+    duration > 0 ? Math.min(100, (displayPos / duration) * 100) : 0;
+  const volPct = (muted ? 0 : volume) * 100;
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-40"
+      className="fixed bottom-0 left-0 right-0 gpu"
       style={{
         padding: "12px 16px 14px",
         background:
-          "linear-gradient(180deg, transparent 0%, rgba(5,5,5,0.85) 30%, rgba(5,5,5,0.96) 100%)",
-        backdropFilter: "blur(20px) saturate(180%)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          "linear-gradient(180deg, transparent 0%, rgba(5,5,5,0.86) 30%, rgba(5,5,5,0.96) 100%)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
         borderTop: "1px solid var(--line-subtle)",
+        zIndex: "var(--z-player)" as unknown as number,
       }}
     >
+      {/* Ambient gold haze when actively playing */}
+      {isPlaying && current && (
+        <div
+          aria-hidden
+          className="absolute pointer-events-none gpu"
+          style={{
+            insetInlineStart: "10%",
+            top: "-50%",
+            width: 360,
+            height: 200,
+            background:
+              "radial-gradient(ellipse at center, rgba(212,175,55,0.18), transparent 70%)",
+            filter: "blur(20px)",
+            animation: "ambient-drift 18s ease-in-out infinite alternate",
+            opacity: 0.7,
+          }}
+        />
+      )}
+
       <div
-        className="mx-auto max-w-[1400px] grid items-center gap-4"
+        className="mx-auto max-w-[1400px] grid items-center gap-4 relative"
         style={{
-          gridTemplateColumns: "minmax(180px, 1fr) minmax(280px, 2fr) minmax(180px, 1fr)",
+          gridTemplateColumns:
+            "minmax(180px, 1fr) minmax(280px, 2fr) minmax(180px, 1fr)",
         }}
       >
         {/* Left: now playing */}
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="relative rounded-md overflow-hidden flex-shrink-0"
+            className="relative rounded-md overflow-hidden flex-shrink-0 gpu"
             style={{
-              width: 52,
-              height: 52,
+              width: 56,
+              height: 56,
               border: "1px solid var(--line-subtle)",
               background:
-                "linear-gradient(135deg, rgba(212,175,55,0.18), rgba(0,0,0,0.6))",
+                "linear-gradient(135deg, rgba(212,175,55,0.2), rgba(0,0,0,0.6))",
             }}
           >
+            {/* Halo when playing */}
+            {isPlaying && current && (
+              <span
+                className="now-halo"
+                style={{ inset: -5, borderRadius: 10 }}
+                aria-hidden
+              />
+            )}
             {thumb ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumb} alt="" className="w-full h-full object-cover" />
+              <img
+                key={crossKey}
+                src={thumb}
+                alt=""
+                className="w-full h-full object-cover text-cross"
+              />
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center"
                 style={{ color: "rgba(212,175,55,0.7)" }}
               >
-                <IconMusic size={20} />
+                <IconMusic size={22} />
               </div>
-            )}
-            {isPlaying && current && (
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  boxShadow: "inset 0 0 0 1px rgba(212,175,55,0.6)",
-                  borderRadius: 6,
-                }}
-              />
             )}
           </div>
           <div className="min-w-0">
             <div
-              className="font-display italic truncate text-[15px]"
-              style={{ color: current ? "var(--text)" : "var(--text-faint)" }}
+              key={`title-${crossKey}`}
+              className="font-display italic truncate text-cross"
+              style={{
+                fontSize: 15,
+                color: current ? "var(--text)" : "var(--text-faint)",
+              }}
+              title={current?.title}
             >
               {current ? current.title : t.nothingPlaying}
             </div>
             <div
-              className="mt-0.5 text-[11px] truncate flex items-center gap-2"
-              style={{ color: "var(--text-muted)" }}
+              className="mt-0.5 truncate flex items-center gap-2"
+              style={{ color: "var(--text-muted)", fontSize: 11 }}
             >
               {current ? (
                 <>
@@ -153,7 +202,9 @@ export default function BottomPlayer({
                       <IconMusic size={8} />
                     )}
                     <span>
-                      {current.source === "youtube" ? t.sourceYouTube : t.sourceUpload}
+                      {current.source === "youtube"
+                        ? t.sourceYouTube
+                        : t.sourceUpload}
                     </span>
                   </span>
                   <span style={{ letterSpacing: "0.04em" }}>
@@ -172,7 +223,7 @@ export default function BottomPlayer({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               onClick={onToggleShuffle}
               data-active={shuffle ? "true" : "false"}
               title={t.shuffle}
@@ -182,20 +233,24 @@ export default function BottomPlayer({
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               onClick={onPrev}
               disabled={tracks.length === 0}
               title={t.previous}
               aria-label={t.previous}
             >
-              {direction === "rtl" ? <IconNext size={16} /> : <IconPrev size={16} />}
+              {direction === "rtl" ? (
+                <IconNext size={16} />
+              ) : (
+                <IconPrev size={16} />
+              )}
             </button>
             <button
               type="button"
-              className="btn-base btn-play"
+              className="btn-base btn-play gpu"
               onClick={onPlayPause}
               disabled={!current && tracks.length === 0}
-              style={{ width: 44, height: 44 }}
+              style={{ width: 46, height: 46 }}
               title={isPlaying ? t.pause : t.play}
               aria-label={isPlaying ? t.pause : t.play}
             >
@@ -203,17 +258,21 @@ export default function BottomPlayer({
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               onClick={onNext}
               disabled={tracks.length === 0}
               title={t.next}
               aria-label={t.next}
             >
-              {direction === "rtl" ? <IconPrev size={16} /> : <IconNext size={16} />}
+              {direction === "rtl" ? (
+                <IconPrev size={16} />
+              ) : (
+                <IconNext size={16} />
+              )}
             </button>
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn magnet"
               onClick={onToggleRepeat}
               data-active={repeat ? "true" : "false"}
               title={t.repeat}
@@ -223,38 +282,74 @@ export default function BottomPlayer({
             </button>
           </div>
 
-          <div className="w-full mt-1.5 flex items-center gap-3 px-2">
+          {/* Premium seek bar */}
+          <div className="w-full mt-2 flex items-center gap-3 px-2">
             <span
-              className="text-[10px] tnum"
+              className="tnum"
               style={{
                 color: "var(--text-muted)",
+                fontSize: 10,
                 minWidth: 36,
                 textAlign: "end",
               }}
             >
-              {fmtTime(position)}
+              {fmtTime(displayPos)}
             </span>
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" style={{ height: 14 }}>
+              <div
+                className="progress-track absolute left-0 right-0 top-1/2"
+                style={{ transform: "translateY(-50%)" }}
+              >
+                <div
+                  className="progress-fill"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
               <input
                 type="range"
-                className="slider"
+                className="slider absolute inset-0 w-full"
                 min={0}
                 max={duration && Number.isFinite(duration) ? duration : 0}
                 step={0.1}
-                value={Math.min(position || 0, duration || 0)}
-                onChange={(e) => onSeek(parseFloat(e.target.value))}
+                value={Math.min(displayPos, duration || 0)}
+                onChange={(e) => setSeekValue(parseFloat(e.target.value))}
+                onMouseDown={() => {
+                  dragRef.current = true;
+                }}
+                onMouseUp={(e) => {
+                  dragRef.current = false;
+                  onSeek(parseFloat((e.target as HTMLInputElement).value));
+                  setSeekValue(null);
+                }}
+                onTouchStart={() => {
+                  dragRef.current = true;
+                }}
+                onTouchEnd={(e) => {
+                  dragRef.current = false;
+                  onSeek(parseFloat((e.target as HTMLInputElement).value));
+                  setSeekValue(null);
+                }}
+                onBlur={() => {
+                  if (seekValue != null) {
+                    onSeek(seekValue);
+                    setSeekValue(null);
+                  }
+                }}
                 disabled={!current || !duration}
                 aria-label="seek"
                 style={{
-                  background: `linear-gradient(90deg, var(--gold-400) 0%, var(--gold-300) ${progressPct}%, rgba(255,255,255,0.12) ${progressPct}%, rgba(255,255,255,0.12) 100%)`,
-                  borderRadius: 999,
+                  background: "transparent",
+                  margin: 0,
+                  padding: 0,
+                  height: 14,
                 }}
               />
             </div>
             <span
-              className="text-[10px] tnum"
+              className="tnum"
               style={{
                 color: "var(--text-muted)",
+                fontSize: 10,
                 minWidth: 36,
               }}
             >
@@ -267,7 +362,7 @@ export default function BottomPlayer({
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn magnet"
             onClick={onToggleAutoplay}
             data-active={autoplay ? "true" : "false"}
             title={t.autoplay}
@@ -294,7 +389,7 @@ export default function BottomPlayer({
           </button>
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn magnet"
             onClick={onToggleMute}
             title={muted ? t.unmute : t.mute}
             aria-label={muted ? t.unmute : t.mute}
@@ -306,19 +401,34 @@ export default function BottomPlayer({
               <IconVol size={14} />
             )}
           </button>
-          <input
-            type="range"
-            className="slider"
-            min={0}
-            max={1}
-            step={0.01}
-            value={muted ? 0 : volume}
-            onChange={(e) => onVolume(parseFloat(e.target.value))}
-            style={{ width: 100 }}
-            aria-label={t.volume}
-          />
+
+          {/* Volume track with progress fill */}
+          <div className="relative" style={{ width: 110, height: 14 }}>
+            <div
+              className="progress-track absolute left-0 right-0 top-1/2"
+              style={{ transform: "translateY(-50%)" }}
+            >
+              <div
+                className="progress-fill"
+                style={{ width: `${volPct}%` }}
+              />
+            </div>
+            <input
+              type="range"
+              className="slider absolute inset-0 w-full"
+              min={0}
+              max={1}
+              step={0.01}
+              value={muted ? 0 : volume}
+              onChange={(e) => onVolume(parseFloat(e.target.value))}
+              aria-label={t.volume}
+              style={{ background: "transparent", height: 14, margin: 0, padding: 0 }}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+export default memo(BottomPlayerImpl);

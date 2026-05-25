@@ -98,6 +98,14 @@ export const strings = {
     sectionFirstDance: "First Dance",
     sectionParty: "Party",
     moveToSection: "Move to section",
+    // Emotional copy
+    nightsAway: "nights away",
+    oneNightAway: "one night away",
+    tonightIsTheNight: "Tonight is the night",
+    theDayHasArrived: "The day has arrived",
+    afterWedding: "since the night",
+    inTheAir: "Cue the music for the night",
+    inMoments: "in a few moments",
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -194,6 +202,14 @@ export const strings = {
     sectionFirstDance: "الرقصة الأولى",
     sectionParty: "الحفلة",
     moveToSection: "نقل إلى قسم",
+    // Emotional copy
+    nightsAway: "ليالٍ تفصلنا",
+    oneNightAway: "ليلة واحدة تفصلنا",
+    tonightIsTheNight: "الليلة هي ليلتنا",
+    theDayHasArrived: "حلّ اليوم الموعود",
+    afterWedding: "منذ الليلة",
+    inTheAir: "نغمات السهرة",
+    inMoments: "بعد لحظات",
   },
 } satisfies Record<Language, Record<string, unknown>>;
 

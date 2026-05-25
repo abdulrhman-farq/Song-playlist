@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { IconUpload } from "@/components/icons";
 import type { Strings } from "@/lib/i18n";
+import { useMagneticCursor } from "@/lib/useMagneticCursor";
 
 const ACCEPTED = /\.(mp3|wav|m4a|ogg|aac|flac)$/i;
 
@@ -15,6 +16,7 @@ export default function UploadPanel({ t, onAddFiles }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  const magnet = useMagneticCursor();
 
   function pick(list: FileList | null) {
     if (!list) return;
@@ -28,6 +30,7 @@ export default function UploadPanel({ t, onAddFiles }: Props) {
 
   return (
     <div
+      onMouseMove={magnet.onMouseMove}
       onDragOver={(e) => {
         e.preventDefault();
         setDragOver(true);
@@ -47,7 +50,7 @@ export default function UploadPanel({ t, onAddFiles }: Props) {
       }}
       role="button"
       tabIndex={0}
-      className="relative overflow-hidden cursor-pointer transition"
+      className="magnetic relative overflow-hidden cursor-pointer contain-paint"
       style={{
         borderRadius: 18,
         padding: "26px 22px",

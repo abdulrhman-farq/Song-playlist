@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IconPlus, IconYT } from "@/components/icons";
 import type { Strings } from "@/lib/i18n";
+import { useMagneticCursor } from "@/lib/useMagneticCursor";
 import { parseYouTubeId } from "@/lib/youtube";
 
 interface Props {
@@ -15,6 +16,7 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
   const [title, setTitle] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const magnet = useMagneticCursor();
 
   async function submit() {
     setErr(null);
