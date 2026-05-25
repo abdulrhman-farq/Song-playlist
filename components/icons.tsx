@@ -22,6 +22,10 @@ function Svg({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
+      // Icons are decorative; the surrounding button/link carries the
+      // accessible name. Hide from AT and skip from the focus order.
+      aria-hidden="true"
+      focusable="false"
       {...rest}
     >
       {children}

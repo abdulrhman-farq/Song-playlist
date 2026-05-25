@@ -12,6 +12,12 @@ interface Props {
   fallbackAlt: string;
   className?: string;
   style?: React.CSSProperties;
+  /** Intrinsic width — set explicitly to prevent CLS. */
+  width?: number;
+  /** Intrinsic height — set explicitly to prevent CLS. */
+  height?: number;
+  /** When true, eagerly request the image (use for above-the-fold art). */
+  eager?: boolean;
 }
 
 /**
@@ -27,6 +33,9 @@ export default function EditableImage({
   fallbackAlt,
   className,
   style,
+  width,
+  height,
+  eager,
 }: Props) {
   const { editing, setDraftOverride } = useEditMode();
   const src = useEditableText(`${editKey}.src`, fallbackSrc);
@@ -132,11 +141,23 @@ export default function EditableImage({
     setOpen(false);
   }
 
-  // Non-edit-mode render: plain <img>.
+  // Non-edit-mode render: plain <img> with explicit intrinsic
+  // dimensions + async decoding. width/height are advisory hints so the
+  // browser can reserve layout space before the bitmap downloads
+  // (prevents CLS); they don't override CSS sizing.
   if (!editing) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={alt} className={className} style={style} />
+      <img
+        src={src}
+        alt={alt}
+        className={className}
+        style={style}
+        width={width}
+        height={height}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+      />
     );
   }
 

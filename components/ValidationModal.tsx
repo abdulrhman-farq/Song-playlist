@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 import { IconCheck, IconClose, IconShield, IconYT } from "@/components/icons";
+import { trapFocus } from "@/lib/focusTrap";
 import type { Strings } from "@/lib/i18n";
 import type { EmbedCheckResult } from "@/lib/ytApi";
 import type { Language, YouTubeTrack } from "@/types";
@@ -49,6 +50,9 @@ export default function ValidationModal({
   t,
   lang,
 }: Props) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -57,6 +61,14 @@ export default function ValidationModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, validating, onClose]);
+
+  // Keep focus inside the modal while open; restore on close.
+  useEffect(() => {
+    if (!open) return;
+    const node = cardRef.current;
+    if (!node) return;
+    return trapFocus(node);
+  }, [open]);
 
   if (!open) return null;
 
@@ -76,10 +88,18 @@ export default function ValidationModal({
       }}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div className="modal-card" style={{ padding: 24 }}>
+      <div
+        ref={cardRef}
+        className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-busy={validating}
+        style={{ padding: 24 }}
+      >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span style={{ color: "var(--gold-400)" }}>
+            <span style={{ color: "var(--gold-400)" }} aria-hidden>
               <IconShield size={16} />
             </span>
             <div className="label-micro">{t.validateTitle}</div>
@@ -90,12 +110,14 @@ export default function ValidationModal({
             onClick={onClose}
             disabled={validating}
             title={t.cancel}
+            aria-label={t.cancel}
           >
             <IconClose size={14} />
           </button>
         </div>
 
         <div
+          id={titleId}
           className="font-display italic"
           style={{ fontSize: 24, color: "var(--text)" }}
         >

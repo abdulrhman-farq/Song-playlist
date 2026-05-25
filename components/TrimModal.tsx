@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { IconCheck, IconClock, IconClose, IconTrash } from "@/components/icons";
+import { trapFocus } from "@/lib/focusTrap";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
 import type { Language, Track } from "@/types";
@@ -48,6 +49,8 @@ export default function TrimModal({
   const [startStr, setStartStr] = useState("");
   const [endStr, setEndStr] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (open && track) {
@@ -65,6 +68,14 @@ export default function TrimModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Keep focus inside the modal while open; restore on close.
+  useEffect(() => {
+    if (!open) return;
+    const node = cardRef.current;
+    if (!node) return;
+    return trapFocus(node);
+  }, [open]);
 
   if (!open || !track) return null;
 
@@ -104,10 +115,17 @@ export default function TrimModal({
       }}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div className="modal-card" style={{ padding: 24, width: "min(460px, 100%)" }}>
+      <div
+        ref={cardRef}
+        className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        style={{ padding: 24, width: "min(460px, 100%)" }}
+      >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span style={{ color: "var(--gold-400)" }}>
+            <span style={{ color: "var(--gold-400)" }} aria-hidden>
               <IconClock size={14} />
             </span>
             <div className="label-micro">{t.trimTitle}</div>
@@ -117,12 +135,14 @@ export default function TrimModal({
             className="icon-btn"
             onClick={onClose}
             title={t.cancel}
+            aria-label={t.cancel}
           >
             <IconClose size={14} />
           </button>
         </div>
 
         <div
+          id={titleId}
           className="font-display italic truncate"
           style={{ fontSize: 22, color: "var(--text)" }}
           title={track.title}

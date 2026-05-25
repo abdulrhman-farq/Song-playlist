@@ -110,7 +110,10 @@ export default function Sidebar({
           <EditableImage
             editKey="sidebar.brand"
             fallbackSrc="/logo.png"
-            fallbackAlt="Ruwaida's Wedding"
+            fallbackAlt="Ruwaida's Wedding monogram"
+            width={38}
+            height={38}
+            eager
             style={{
               width: "100%",
               height: "100%",
@@ -142,10 +145,15 @@ export default function Sidebar({
 
       <div className="divider mx-5" />
 
-      {/* Navigation-style group */}
+      {/* Navigation-style group.
+          The Home link is the active landing page; mark it
+          aria-current so assistive tech announces it as the current
+          page. The playlist/timeline entries are anchor-style jump
+          targets within the same page, so they don't carry the
+          attribute. */}
       <EditableBlock editKey="sidebar.nav" label="Sidebar nav">
-      <nav className="px-3 mt-3 space-y-1">
-        <a href="#hero" className="nav-row">
+      <nav aria-label="Primary" className="px-3 mt-3 space-y-1">
+        <a href="#hero" className="nav-row" aria-current="page">
           <IconHome size={18} />
           <span>
             <EditableText editKey="sidebar.nav.home" fallback="Home" />
@@ -164,6 +172,7 @@ export default function Sidebar({
           type="button"
           className="nav-row"
           onClick={actAndClose(onOpenTimeline)}
+          aria-label={t.timeline}
         >
           <IconClock size={18} />
           <span>
@@ -188,6 +197,7 @@ export default function Sidebar({
           style={{ width: 26, height: 26 }}
           onClick={actAndClose(onAddSection)}
           title={t.addSection}
+          aria-label={t.addSection}
         >
           <IconPlus size={13} />
         </button>
