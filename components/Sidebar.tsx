@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import EditableBlock from "@/components/EditableBlock";
+import EditableImage from "@/components/EditableImage";
+import EditableText from "@/components/EditableText";
 import {
   IconClock,
   IconClose,
@@ -19,6 +22,7 @@ import {
 import { useEditMode } from "@/lib/editMode";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
+import type { RealtimeStatus } from "@/lib/realtimeSync";
 import type { Language, PlaylistSection, Track } from "@/types";
 
 interface Props {
@@ -30,6 +34,8 @@ interface Props {
   sections: PlaylistSection[];
   hasYouTubeTracks: boolean;
   validating: boolean;
+  /** Realtime channel status — drives the "Live · synced" indicator. */
+  realtimeStatus?: RealtimeStatus;
   onToggleLang: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -50,6 +56,7 @@ export default function Sidebar({
   sections,
   hasYouTubeTracks,
   validating,
+  realtimeStatus,
   onToggleLang,
   onImport,
   onExport,
@@ -87,6 +94,7 @@ export default function Sidebar({
   const content = (
     <div className="flex flex-col h-full">
       {/* Brand */}
+      <EditableBlock editKey="sidebar.brand" label="Sidebar brand">
       <div className="px-5 py-6 flex items-center gap-3">
         <div
           style={{
@@ -99,10 +107,10 @@ export default function Sidebar({
             flexShrink: 0,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.png"
-            alt="Ruwaida's Wedding"
+          <EditableImage
+            editKey="sidebar.brand"
+            fallbackSrc="/logo.png"
+            fallbackAlt="Ruwaida's Wedding"
             style={{
               width: "100%",
               height: "100%",
@@ -114,28 +122,43 @@ export default function Sidebar({
         </div>
         <div className="min-w-0">
           <div className="eyebrow truncate" style={{ letterSpacing: "0.28em" }}>
-            Maestro
+            <EditableText editKey="sidebar.brandEyebrow" fallback="Maestro" />
           </div>
           <div
             className="font-display text-[18px] mt-0.5 truncate"
             style={{ color: "var(--text)" }}
           >
-            Ruwaida's Wedding
+            <EditableText
+              editKey="sidebar.brandTitle"
+              fallback="Ruwaida's Wedding"
+            />
           </div>
         </div>
       </div>
+      </EditableBlock>
+
+      {/* Realtime presence indicator — live when channel SUBSCRIBED */}
+      <LiveIndicator status={realtimeStatus} />
 
       <div className="divider mx-5" />
 
       {/* Navigation-style group */}
+      <EditableBlock editKey="sidebar.nav" label="Sidebar nav">
       <nav className="px-3 mt-3 space-y-1">
         <a href="#hero" className="nav-row">
           <IconHome size={18} />
-          <span>Home</span>
+          <span>
+            <EditableText editKey="sidebar.nav.home" fallback="Home" />
+          </span>
         </a>
         <a href="#playlist" className="nav-row">
           <IconLibrary size={18} />
-          <span>Your playlist</span>
+          <span>
+            <EditableText
+              editKey="sidebar.nav.playlist"
+              fallback="Your playlist"
+            />
+          </span>
         </a>
         <button
           type="button"
@@ -143,7 +166,9 @@ export default function Sidebar({
           onClick={actAndClose(onOpenTimeline)}
         >
           <IconClock size={18} />
-          <span>{t.timeline}</span>
+          <span>
+            <EditableText editKey="sidebar.nav.timeline" fallback={t.timeline} />
+          </span>
           <span
             className="ms-auto label-micro"
             style={{ color: "var(--gold-400)" }}
@@ -152,6 +177,7 @@ export default function Sidebar({
           </span>
         </button>
       </nav>
+      </EditableBlock>
 
       {/* Sections jump-list */}
       <div className="px-5 mt-6 mb-2 flex items-center justify-between">
@@ -228,17 +254,23 @@ export default function Sidebar({
       {/* Actions */}
       <div className="px-3 py-4 space-y-1">
         <ActionRow icon={<IconSparkle size={16} />} onClick={actAndClose(onSamples)}>
-          {t.sample}
+          <EditableText editKey="sidebar.actions.sample" fallback={t.sample} />
         </ActionRow>
         <ActionRow icon={<IconImport size={16} />} onClick={actAndClose(onImport)}>
-          {t.importJson}
+          <EditableText
+            editKey="sidebar.actions.importJson"
+            fallback={t.importJson}
+          />
         </ActionRow>
         <ActionRow
           icon={<IconExport size={16} />}
           onClick={actAndClose(onExport)}
           disabled={tracks.length === 0}
         >
-          {t.exportJson}
+          <EditableText
+            editKey="sidebar.actions.exportJson"
+            fallback={t.exportJson}
+          />
         </ActionRow>
         {hasYouTubeTracks && (
           <ActionRow
@@ -246,7 +278,10 @@ export default function Sidebar({
             onClick={actAndClose(onValidate)}
             disabled={validating}
           >
-            {validating ? t.validating : t.validate}
+            <EditableText
+              editKey="sidebar.actions.validate"
+              fallback={validating ? t.validating : t.validate}
+            />
           </ActionRow>
         )}
         {tracks.length > 0 && (
@@ -255,7 +290,10 @@ export default function Sidebar({
             onClick={actAndClose(onClearAll)}
             tone="danger"
           >
-            {t.clearAll}
+            <EditableText
+              editKey="sidebar.actions.clearAll"
+              fallback={t.clearAll}
+            />
           </ActionRow>
         )}
       </div>
@@ -276,7 +314,7 @@ export default function Sidebar({
                 className="ms-auto label-micro"
                 style={{ color: "var(--gold-400)" }}
               >
-                ADMIN
+                <EditableText editKey="sidebar.adminBadge" fallback="ADMIN" />
               </span>
             </button>
             <button
@@ -287,7 +325,12 @@ export default function Sidebar({
               title="Sign out of admin"
             >
               <IconClose size={14} />
-              <span>Sign out admin</span>
+              <span>
+                <EditableText
+                  editKey="sidebar.signOutLabel"
+                  fallback="Sign out admin"
+                />
+              </span>
             </button>
           </>
         )}
@@ -394,5 +437,71 @@ function ActionRow({
       <span style={{ opacity: 0.85 }}>{icon}</span>
       <span>{children}</span>
     </button>
+  );
+}
+
+/**
+ * Tiny presence pill under the brand tile: pulsing emerald dot +
+ * "Live · synced" when the Supabase realtime channel is SUBSCRIBED,
+ * a muted dot + "Offline" otherwise. Hidden until we know the
+ * status (parent omits the prop = SSR/no-op).
+ */
+function LiveIndicator({ status }: { status?: RealtimeStatus }) {
+  if (!status) return null;
+  const isLive = status === "live";
+  const dotColor = isLive ? "#34d399" : "#7c7c7c";
+  const labelColor = isLive ? "var(--text-muted)" : "var(--text-faint)";
+  const label =
+    status === "live"
+      ? "Live · synced"
+      : status === "connecting"
+        ? "Connecting…"
+        : "Offline";
+  return (
+    <div
+      className="px-5 pb-3 flex items-center gap-2"
+      title={
+        isLive
+          ? "Realtime channel connected — edits sync to everyone"
+          : "Realtime disconnected — changes are local until reconnect"
+      }
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 999,
+          background: dotColor,
+          boxShadow: isLive
+            ? "0 0 0 0 rgba(52,211,153,0.55)"
+            : "none",
+          animation: isLive ? "wp-live-pulse 1.8s ease-in-out infinite" : undefined,
+          flexShrink: 0,
+        }}
+      />
+      <span
+        className="text-[11px] tnum"
+        style={{
+          color: labelColor,
+          letterSpacing: "0.04em",
+        }}
+      >
+        {label}
+      </span>
+      <style jsx>{`
+        @keyframes wp-live-pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+          }
+          70% {
+            box-shadow: 0 0 0 6px rgba(52, 211, 153, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+          }
+        }
+      `}</style>
+    </div>
   );
 }

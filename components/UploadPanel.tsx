@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import EditableText from "@/components/EditableText";
 import { IconUpload } from "@/components/icons";
 import type { Strings } from "@/lib/i18n";
 import { useMagneticCursor } from "@/lib/useMagneticCursor";
@@ -117,23 +118,41 @@ export default function UploadPanel({ t, onAddFiles, progress }: Props) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="label-micro" style={{ color: "var(--gold-400)" }}>
-            {t.addAudio}
+            <EditableText
+              editKey="composer.upload.label"
+              fallback={t.addAudio}
+            />
           </div>
           <div
             className="font-display italic mt-1 truncate"
             style={{ fontSize: 20, color: "var(--text)" }}
           >
-            {showProgress
-              ? t.extractingAudio
-              : dragOver
-              ? t.dropHere
-              : t.chooseFiles}
+            {showProgress ? (
+              t.extractingAudio
+            ) : dragOver ? (
+              <EditableText
+                editKey="composer.upload.drop"
+                fallback={t.dropHere}
+              />
+            ) : (
+              <EditableText
+                editKey="composer.upload.idle"
+                fallback={t.chooseFiles}
+              />
+            )}
           </div>
           <div
             className="text-[12px] mt-1 truncate"
             style={{ color: "var(--text-muted)" }}
           >
-            {showProgress && progress ? progress.name : t.accepted}
+            {showProgress && progress ? (
+              progress.name
+            ) : (
+              <EditableText
+                editKey="composer.upload.accepted"
+                fallback={t.accepted}
+              />
+            )}
           </div>
 
           {showProgress && progress && (

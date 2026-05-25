@@ -1,14 +1,7 @@
 "use client";
 
-import { forwardRef } from "react";
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconEdit,
-  IconPause,
-  IconPlay,
-  IconTrash,
-} from "@/components/icons";
+import { useRef, useState } from "react";
+import SectionToolbar from "@/components/SectionToolbar";
 import TrackRow, { type DropPos } from "@/components/TrackRow";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
@@ -39,8 +32,10 @@ interface Props {
   onRenameSection: (id: string) => void;
   onDeleteSection: (id: string) => void;
   onMoveSection: (id: string, dir: -1 | 1) => void;
+  onDuplicateSection: (id: string) => void;
+  onReorderSections: (fromId: string, toId: string, pos: "above" | "below") => void;
 
-  // DnD
+  // Track-level DnD
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragOver: (e: React.DragEvent, id: string) => void;
   onDragLeave: (e: React.DragEvent, id: string) => void;
@@ -54,13 +49,75 @@ interface Props {
   registerSectionRef: (id: string, el: HTMLElement | null) => void;
 }
 
+/** Internal mime type used to distinguish section-drag from track-drag. */
+const SECTION_DRAG_MIME = "application/x-playlist-section";
+
 export default function TrackList(props: Props) {
   const {
     sections,
     tracksBySection,
     unassigned,
-    t,
+    onReorderSections,
   } = props;
+
+  /** ID of the section currently being dragged (via header grip). */
+  const sectionDragIdRef = useRef<string | null>(null);
+  /** ID of the section header being hovered + position relative to it. */
+  const [sectionDragOverId, setSectionDragOverId] = useState<string | null>(
+    null,
+  );
+  const [sectionDropPos, setSectionDropPos] = useState<"above" | "below" | null>(
+    null,
+  );
+
+  function onSectionDragStart(e: React.DragEvent, id: string) {
+    sectionDragIdRef.current = id;
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      // Mark this drag as a section move so header listeners only react
+      // to peer sections (not track drags).
+      e.dataTransfer.setData(SECTION_DRAG_MIME, id);
+      e.dataTransfer.setData("text/plain", id);
+    } catch {
+      /* ignore */
+    }
+  }
+  function onSectionDragEnd() {
+    sectionDragIdRef.current = null;
+    setSectionDragOverId(null);
+    setSectionDropPos(null);
+  }
+  function onSectionHeaderDragOver(e: React.DragEvent, targetId: string) {
+    // Only respond if a section is being dragged (not a track).
+    if (!sectionDragIdRef.current) return;
+    if (sectionDragIdRef.current === targetId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const above = e.clientY - rect.top < rect.height / 2;
+    setSectionDragOverId(targetId);
+    setSectionDropPos(above ? "above" : "below");
+  }
+  function onSectionHeaderDragLeave(_e: React.DragEvent, targetId: string) {
+    if (sectionDragOverId === targetId) {
+      setSectionDragOverId(null);
+      setSectionDropPos(null);
+    }
+  }
+  function onSectionHeaderDrop(e: React.DragEvent, targetId: string) {
+    const fromId = sectionDragIdRef.current;
+    if (!fromId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pos = sectionDropPos ?? "above";
+    if (fromId !== targetId) {
+      onReorderSections(fromId, targetId, pos);
+    }
+    sectionDragIdRef.current = null;
+    setSectionDragOverId(null);
+    setSectionDropPos(null);
+  }
 
   return (
     <div id="playlist" className="flex flex-col gap-8 fade-up">
@@ -73,6 +130,16 @@ export default function TrackList(props: Props) {
             isFirst={idx === 0}
             isLast={idx === sections.length - 1}
             tracks={list}
+            sectionDropIndicator={
+              sectionDragOverId === sec.id ? sectionDropPos : null
+            }
+            onSectionDragStart={(e) => onSectionDragStart(e, sec.id)}
+            onSectionDragEnd={onSectionDragEnd}
+            onSectionHeaderDragOver={(e) => onSectionHeaderDragOver(e, sec.id)}
+            onSectionHeaderDragLeave={(e) =>
+              onSectionHeaderDragLeave(e, sec.id)
+            }
+            onSectionHeaderDrop={(e) => onSectionHeaderDrop(e, sec.id)}
             {...props}
           />
         );
@@ -84,6 +151,7 @@ export default function TrackList(props: Props) {
           isFirst={false}
           isLast
           tracks={unassigned}
+          sectionDropIndicator={null}
           {...props}
         />
       )}
@@ -91,11 +159,25 @@ export default function TrackList(props: Props) {
   );
 }
 
+type SectionBlockProps = Props & {
+  section: SectionLikeProps | null;
+  isFirst: boolean;
+  isLast: boolean;
+  tracks: Track[];
+  sectionDropIndicator: "above" | "below" | null;
+  onSectionDragStart?: (e: React.DragEvent) => void;
+  onSectionDragEnd?: (e: React.DragEvent) => void;
+  onSectionHeaderDragOver?: (e: React.DragEvent) => void;
+  onSectionHeaderDragLeave?: (e: React.DragEvent) => void;
+  onSectionHeaderDrop?: (e: React.DragEvent) => void;
+};
+
 function SectionBlock({
   section,
   isFirst,
   isLast,
   tracks,
+  sectionDropIndicator,
   t,
   currentId,
   isPlaying,
@@ -108,6 +190,7 @@ function SectionBlock({
   onRenameSection,
   onDeleteSection,
   onMoveSection,
+  onDuplicateSection,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -118,12 +201,12 @@ function SectionBlock({
   dropPos,
   dragOverSection,
   registerSectionRef,
-}: Props & {
-  section: SectionLikeProps | null;
-  isFirst: boolean;
-  isLast: boolean;
-  tracks: Track[];
-}) {
+  onSectionDragStart,
+  onSectionDragEnd,
+  onSectionHeaderDragOver,
+  onSectionHeaderDragLeave,
+  onSectionHeaderDrop,
+}: SectionBlockProps) {
   const sectionId = section?.id ?? null;
   const isDropTarget =
     section ? dragOverSection === section.id : dragOverSection === null;
@@ -138,7 +221,6 @@ function SectionBlock({
   );
 
   const hasActiveHere = tracks.some((tr) => tr.id === currentId);
-  const PlayIconForSection = hasActiveHere && isPlaying ? IconPause : IconPlay;
 
   return (
     <section
@@ -149,11 +231,44 @@ function SectionBlock({
       className={isDropTarget ? "section-drop-target" : undefined}
       onDragOver={(e) => onSectionDragOver(e, sectionId)}
       onDrop={(e) => onSectionDrop(e, sectionId)}
+      style={{ position: "relative" }}
     >
-      {/* Section header */}
-      <header className="flex items-end justify-between gap-4 px-2 mb-3">
+      {/* Section-level drop indicator (drawn relative to header) */}
+      {sectionDropIndicator && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 2,
+            background: "var(--gold-400)",
+            borderRadius: 999,
+            boxShadow: "0 0 12px rgba(212, 175, 55, 0.6)",
+            top: sectionDropIndicator === "above" ? -10 : undefined,
+            bottom: sectionDropIndicator === "below" ? -10 : undefined,
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        />
+      )}
+
+      {/* Section header — title + meta on one row, toolbar on its own row below. */}
+      <header
+        className="px-2 mb-3"
+        onDragOver={
+          section ? (e) => onSectionHeaderDragOver?.(e) : undefined
+        }
+        onDragLeave={
+          section ? (e) => onSectionHeaderDragLeave?.(e) : undefined
+        }
+        onDrop={section ? (e) => onSectionHeaderDrop?.(e) : undefined}
+      >
         <div className="min-w-0">
-          <div className="eyebrow flex items-center gap-2" style={{ color: "var(--gold-400)" }}>
+          <div
+            className="eyebrow flex items-center gap-2"
+            style={{ color: "var(--gold-400)" }}
+          >
             <span>{t.sections}</span>
           </div>
           <h2
@@ -176,66 +291,30 @@ function SectionBlock({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => onPlaySection(sectionId)}
-            disabled={tracks.length === 0}
-            aria-label={t.play}
-            title={t.play}
-            style={{
-              width: 42,
-              height: 42,
-              background: tracks.length > 0 ? "var(--gold-400)" : undefined,
-              color: tracks.length > 0 ? "#050505" : undefined,
-            }}
-          >
-            <PlayIconForSection size={18} />
-          </button>
-          {section && (
-            <>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => onMoveSection(section.id, -1)}
-                disabled={isFirst}
-                title={t.moveSectionUp}
-                aria-label={t.moveSectionUp}
-              >
-                <IconArrowUp size={14} />
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => onMoveSection(section.id, 1)}
-                disabled={isLast}
-                title={t.moveSectionDown}
-                aria-label={t.moveSectionDown}
-              >
-                <IconArrowDown size={14} />
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => onRenameSection(section.id)}
-                title={t.renameSection}
-                aria-label={t.renameSection}
-              >
-                <IconEdit size={14} />
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                style={{ color: "#f3a08a" }}
-                onClick={() => onDeleteSection(section.id)}
-                title={t.deleteSection}
-                aria-label={t.deleteSection}
-              >
-                <IconTrash size={14} />
-              </button>
-            </>
-          )}
+        <div className="mt-2">
+          <SectionToolbar
+            t={t}
+            sectionId={sectionId}
+            trackCount={tracks.length}
+            hasActive={hasActiveHere}
+            isPlaying={isPlaying}
+            isFirst={isFirst}
+            isLast={isLast}
+            onPlay={() => onPlaySection(sectionId)}
+            onMoveUp={
+              section ? () => onMoveSection(section.id, -1) : undefined
+            }
+            onMoveDown={
+              section ? () => onMoveSection(section.id, 1) : undefined
+            }
+            onRename={section ? () => onRenameSection(section.id) : undefined}
+            onDuplicate={
+              section ? () => onDuplicateSection(section.id) : undefined
+            }
+            onDelete={section ? () => onDeleteSection(section.id) : undefined}
+            onSectionDragStart={section ? onSectionDragStart : undefined}
+            onSectionDragEnd={section ? onSectionDragEnd : undefined}
+          />
         </div>
       </header>
 

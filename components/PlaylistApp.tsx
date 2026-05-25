@@ -414,6 +414,92 @@ export default function PlaylistApp() {
     });
   }, []);
 
+  /**
+   * Drag-reorder: move section `fromId` to land above or below `toId`.
+   * Mirrors the track-row pattern.
+   */
+  const handleReorderSections = useCallback(
+    (fromId: string, toId: string, pos: "above" | "below") => {
+      if (fromId === toId) return;
+      setSections((prev) => {
+        const fromIdx = prev.findIndex((s) => s.id === fromId);
+        const toIdx = prev.findIndex((s) => s.id === toId);
+        if (fromIdx < 0 || toIdx < 0) return prev;
+        const next = prev.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        let insertAt = next.findIndex((s) => s.id === toId);
+        if (insertAt < 0) insertAt = next.length;
+        if (pos === "below") insertAt += 1;
+        next.splice(insertAt, 0, moved);
+        return next;
+      });
+    },
+    [],
+  );
+
+  /**
+   * Clone a section's label + every track inside it. New section lands
+   * directly after the source; new tracks get fresh IDs and are
+   * inserted after the source's tracks so playback order stays sane.
+   *
+   * Upload tracks are cloned by reference (same blob id is shared)
+   * which is fine for read playback — duplicates point at the same
+   * audio data. Deleting one duplicate does NOT delete the blob
+   * (handleDelete only purges the blob when deleting any single
+   * track that owns it, which is still correct for the original).
+   */
+  const handleDuplicateSection = useCallback((id: string) => {
+    setSections((prevSections) => {
+      const idx = prevSections.findIndex((s) => s.id === id);
+      if (idx < 0) return prevSections;
+      const source = prevSections[idx];
+      const newSectionId = uid();
+      const cloned: PlaylistSection = {
+        id: newSectionId,
+        label: `${source.label} (copy)`,
+      };
+      const next = prevSections.slice();
+      next.splice(idx + 1, 0, cloned);
+
+      // Clone all tracks belonging to the source section, in their
+      // current order, into the new section. Done inside the same
+      // setSections to read the latest sections; track clone happens
+      // in a separate setTracks below.
+      setTracks((prevTracks) => {
+        const sourceTracks = prevTracks.filter((tr) => tr.sectionId === id);
+        if (sourceTracks.length === 0) return prevTracks;
+        const clones: Track[] = sourceTracks.map((tr) => {
+          if (tr.source === "youtube") {
+            return {
+              ...tr,
+              id: uid(),
+              sectionId: newSectionId,
+            };
+          }
+          return {
+            ...tr,
+            id: uid(),
+            sectionId: newSectionId,
+          };
+        });
+        // Insert the clones right after the last source-section track
+        // so they sit visually adjacent to the new section header.
+        let insertAt = prevTracks.length;
+        for (let i = prevTracks.length - 1; i >= 0; i--) {
+          if (prevTracks[i].sectionId === id) {
+            insertAt = i + 1;
+            break;
+          }
+        }
+        const out = prevTracks.slice();
+        out.splice(insertAt, 0, ...clones);
+        return out;
+      });
+
+      return next;
+    });
+  }, []);
+
   const handleAssignSection = useCallback(
     (trackId: string, sectionId: string | null) => {
       setTracks((prev) =>
@@ -1058,32 +1144,34 @@ export default function PlaylistApp() {
         />
       }
       bottomPlayer={
-        <BottomPlayer
-          lang={lang}
-          t={t}
-          tracks={orderedTracks}
-          currentId={currentId}
-          isPlaying={isPlaying}
-          position={position}
-          duration={duration}
-          volume={volume}
-          muted={muted}
-          shuffle={shuffle}
-          repeat={repeat}
-          autoplay={autoplay}
-          onPlayPause={handlePlayPause}
-          onPrev={handlePrev}
-          onNext={handleNext}
-          onSeek={handleSeek}
-          onVolume={(v) => {
-            setVolume(v);
-            setMuted(false);
-          }}
-          onToggleMute={() => setMuted((m) => !m)}
-          onToggleRepeat={() => setRepeat((r) => !r)}
-          onToggleShuffle={() => setShuffle((s) => !s)}
-          onToggleAutoplay={() => setAutoplay((a) => !a)}
-        />
+        <EditableBlock editKey="player.dock" label="Bottom player dock">
+          <BottomPlayer
+            lang={lang}
+            t={t}
+            tracks={orderedTracks}
+            currentId={currentId}
+            isPlaying={isPlaying}
+            position={position}
+            duration={duration}
+            volume={volume}
+            muted={muted}
+            shuffle={shuffle}
+            repeat={repeat}
+            autoplay={autoplay}
+            onPlayPause={handlePlayPause}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            onSeek={handleSeek}
+            onVolume={(v) => {
+              setVolume(v);
+              setMuted(false);
+            }}
+            onToggleMute={() => setMuted((m) => !m)}
+            onToggleRepeat={() => setRepeat((r) => !r)}
+            onToggleShuffle={() => setShuffle((s) => !s)}
+            onToggleAutoplay={() => setAutoplay((a) => !a)}
+          />
+        </EditableBlock>
       }
     >
       <div className="flex flex-col gap-10">
@@ -1140,6 +1228,8 @@ export default function PlaylistApp() {
             onRenameSection={handleRenameSection}
             onDeleteSection={handleDeleteSection}
             onMoveSection={handleMoveSection}
+            onDuplicateSection={handleDuplicateSection}
+            onReorderSections={handleReorderSections}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}

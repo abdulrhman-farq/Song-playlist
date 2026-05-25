@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import EditableImage from "@/components/EditableImage";
 import {
   IconClose,
   IconEdit,
@@ -100,10 +101,10 @@ function Crest() {
       }}
       aria-hidden
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo.png"
-        alt=""
+      <EditableImage
+        editKey="timeline.crest"
+        fallbackSrc="/logo.png"
+        fallbackAlt=""
         style={{
           width: "100%",
           height: "100%",

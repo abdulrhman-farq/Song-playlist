@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import EditableText from "@/components/EditableText";
 import { IconPlus, IconYT } from "@/components/icons";
+import { useEditableText } from "@/lib/editMode";
 import type { Strings } from "@/lib/i18n";
 import { useMagneticCursor } from "@/lib/useMagneticCursor";
 import { parseYouTubeId } from "@/lib/youtube";
@@ -17,6 +19,14 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const magnet = useMagneticCursor();
+  const ytPlaceholder = useEditableText(
+    "composer.youtube.placeholder",
+    t.ytPlaceholder,
+  );
+  const titlePlaceholder = useEditableText(
+    "composer.youtube.titlePlaceholder",
+    t.titleLabel,
+  );
 
   async function submit() {
     setErr(null);
@@ -76,7 +86,10 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
             <IconYT size={16} />
           </div>
           <div className="label-micro" style={{ color: "var(--text-dim)" }}>
-            {t.addYouTube}
+            <EditableText
+              editKey="composer.youtube.label"
+              fallback={t.addYouTube}
+            />
           </div>
         </div>
 
@@ -84,7 +97,7 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
           <input
             className="input-elegant"
             value={url}
-            placeholder={t.ytPlaceholder}
+            placeholder={ytPlaceholder}
             onChange={(e) => {
               setUrl(e.target.value);
               setErr(null);
@@ -97,7 +110,7 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
           <input
             className="input-elegant"
             value={title}
-            placeholder={t.titleLabel}
+            placeholder={titlePlaceholder}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") submit();
@@ -109,12 +122,14 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
             </div>
           )}
           <div className="flex items-center justify-between gap-3 flex-wrap mt-1">
-            <div
+            <EditableText
+              as="div"
+              editKey="composer.youtube.notice"
+              fallback={t.youtubeNotice}
+              multiline
               className="text-[11px] flex-1 min-w-0"
               style={{ color: "var(--text-faint)", lineHeight: 1.5 }}
-            >
-              {t.youtubeNotice}
-            </div>
+            />
             <button
               type="button"
               className="btn-base btn-gold"
@@ -122,7 +137,12 @@ export default function YouTubeAddPanel({ t, onAddYouTube }: Props) {
               disabled={busy || !url.trim()}
             >
               {busy ? <span className="spinner" /> : <IconPlus size={14} />}
-              <span>{busy ? t.youtubeFetching ?? t.add : t.add}</span>
+              <span>
+                <EditableText
+                  editKey="composer.youtube.addBtn"
+                  fallback={busy ? t.youtubeFetching ?? t.add : t.add}
+                />
+              </span>
             </button>
           </div>
         </div>

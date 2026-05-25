@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import EditableText from "@/components/EditableText";
 import {
   IconMusic,
   IconMute,
@@ -179,7 +180,14 @@ function BottomPlayerImpl({
               }}
               title={current?.title}
             >
-              {current ? current.title : t.nothingPlaying}
+              {current ? (
+                current.title
+              ) : (
+                <EditableText
+                  editKey="player.nothingPlaying"
+                  fallback={t.nothingPlaying}
+                />
+              )}
             </div>
             <div
               className="mt-0.5 truncate flex items-center gap-2"
@@ -202,9 +210,17 @@ function BottomPlayerImpl({
                       <IconMusic size={8} />
                     )}
                     <span>
-                      {current.source === "youtube"
-                        ? t.sourceYouTube
-                        : t.sourceUpload}
+                      {current.source === "youtube" ? (
+                        <EditableText
+                          editKey="player.sourceYouTube"
+                          fallback={t.sourceYouTube}
+                        />
+                      ) : (
+                        <EditableText
+                          editKey="player.sourceUpload"
+                          fallback={t.sourceUpload}
+                        />
+                      )}
                     </span>
                   </span>
                   <span style={{ letterSpacing: "0.04em" }}>

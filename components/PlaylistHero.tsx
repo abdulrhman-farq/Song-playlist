@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import EditableBlock from "@/components/EditableBlock";
+import EditableImage from "@/components/EditableImage";
+import EditableText from "@/components/EditableText";
 import {
   IconCheck,
   IconClose,
@@ -152,10 +155,10 @@ export default function PlaylistHero({
                   "linear-gradient(180deg, #FAF5EC 0%, #EBE0CE 100%)",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt="Ruwaida's Wedding"
+              <EditableImage
+                editKey="hero.artwork"
+                fallbackSrc="/logo.png"
+                fallbackAlt="Ruwaida's Wedding"
                 style={{
                   width: "100%",
                   height: "100%",
@@ -174,9 +177,23 @@ export default function PlaylistHero({
           <div className="flex items-center gap-3 flex-wrap">
             <div className="eyebrow flex items-center gap-2">
               <IconSparkle size={11} />
-              <span>{t.eyebrow}</span>
+              <span>
+                <EditableText editKey="hero.eyebrow" fallback={t.eyebrow} />
+              </span>
             </div>
-            <CountdownChip label={countdown.label} days={countdown.daysAway} />
+            <CountdownChip
+              label={countdown.label}
+              days={countdown.daysAway}
+              state={
+                countdown.isPast
+                  ? "past"
+                  : countdown.isToday
+                  ? "today"
+                  : countdown.daysAway === 1
+                  ? "oneNight"
+                  : "many"
+              }
+            />
           </div>
 
           <h1
@@ -187,7 +204,7 @@ export default function PlaylistHero({
               color: "var(--text)",
             }}
           >
-            {t.coupleAr}
+            <EditableText editKey="hero.coupleAr" fallback={t.coupleAr} />
           </h1>
 
           <div
@@ -198,7 +215,7 @@ export default function PlaylistHero({
               fontWeight: 500,
             }}
           >
-            {t.coupleLatin}
+            <EditableText editKey="hero.coupleLatin" fallback={t.coupleLatin} />
           </div>
 
           <div
@@ -208,7 +225,7 @@ export default function PlaylistHero({
               letterSpacing: "0.02em",
             }}
           >
-            {t.inTheAir}
+            <EditableText editKey="hero.tagline" fallback={t.inTheAir} />
           </div>
 
           <div
@@ -293,6 +310,7 @@ export default function PlaylistHero({
           </div>
 
           {/* Primary action row */}
+          <EditableBlock editKey="hero.actions" label="Hero action row">
           <div className="mt-7 flex items-center gap-3 flex-wrap">
             <button
               type="button"
@@ -338,13 +356,24 @@ export default function PlaylistHero({
               <IconMore size={20} />
             </button>
           </div>
+          </EditableBlock>
         </div>
       </div>
     </section>
   );
 }
 
-function CountdownChip({ label, days }: { label: string; days: number }) {
+type CountdownState = "past" | "today" | "oneNight" | "many";
+
+function CountdownChip({
+  label,
+  days,
+  state,
+}: {
+  label: string;
+  days: number;
+  state: CountdownState;
+}) {
   const isClose = days >= 0 && days <= 3;
   return (
     <span
@@ -381,7 +410,9 @@ function CountdownChip({ label, days }: { label: string; days: number }) {
           className="breathe"
         />
       )}
-      <span>{label}</span>
+      <span>
+        <EditableText editKey={`hero.countdown.${state}`} fallback={label} />
+      </span>
     </span>
   );
 }
