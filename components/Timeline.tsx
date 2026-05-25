@@ -201,23 +201,34 @@ export default function Timeline({ lang, t, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, exporting]);
 
-  /** Lock background page scroll while the Timeline modal is open so
-   *  touch drags scroll the timeline card itself (not the playlist
-   *  behind it). Restores the prior value on unmount.
+  /** Lock background scroll using the iOS-safe position:fixed pattern.
+   *  This freezes the page behind the modal without disabling touch
+   *  scrolling inside the modal (the way `touch-action: none` does).
+   *  We preserve the current scroll position and restore it on close.
    */
   useEffect(() => {
-    const html = document.documentElement;
     const body = document.body;
-    const prevBody = body.style.overflow;
-    const prevHtml = html.style.overflow;
-    const prevTouch = body.style.touchAction;
+    const html = document.documentElement;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const prevBodyPosition = body.style.position;
+    const prevBodyTop = body.style.top;
+    const prevBodyWidth = body.style.width;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = html.style.overflow;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
     body.style.overflow = "hidden";
     html.style.overflow = "hidden";
-    body.style.touchAction = "none";
+
     return () => {
-      body.style.overflow = prevBody;
-      html.style.overflow = prevHtml;
-      body.style.touchAction = prevTouch;
+      body.style.position = prevBodyPosition;
+      body.style.top = prevBodyTop;
+      body.style.width = prevBodyWidth;
+      body.style.overflow = prevBodyOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -317,27 +328,41 @@ export default function Timeline({ lang, t, onClose }: Props) {
         background: "rgba(58, 44, 32, 0.55)",
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
         zIndex: 200,
+        // The overlay itself is the scroll container — iOS-reliable
+        // pattern that doesn't fight with inner overflow on fixed
+        // ancestors.
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
         animation: "fade-in 0.18s var(--ease-out)",
       }}
       dir="rtl"
     >
+      {/* Inner flex wrapper — centers vertically when content fits,
+          otherwise lets the overlay scroll. min-height: 100% ensures
+          backdrop clicks below the card still register as "close". */}
+      <div
+        style={{
+          minHeight: "100%",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: "20px 20px 40px",
+          boxSizing: "border-box",
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !exporting) onClose();
+        }}
+      >
       <div
         className="wed-identity"
         style={{
           width: "min(460px, 100%)",
-          maxHeight: exporting ? "none" : "92vh",
-          overflow: exporting ? "visible" : "auto",
           display: "flex",
           flexDirection: "column",
           gap: 14,
-          overscrollBehavior: "contain",
-          WebkitOverflowScrolling: "touch",
-          touchAction: "pan-y",
         }}
       >
         {/* Toolbar — sits OUTSIDE the captured card */}
@@ -824,6 +849,7 @@ export default function Timeline({ lang, t, onClose }: Props) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
