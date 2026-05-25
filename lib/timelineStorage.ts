@@ -8,7 +8,7 @@ const KEY = "wedding-playlist:v1:timeline";
  * replaced by the current default. Once the user edits, the new
  * version stamp is saved alongside their changes and survives.
  */
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -42,6 +42,9 @@ export function saveTimeline(doc: TimelineDoc): void {
 
 /**
  * Real wedding-day schedule for رويـدا و عبدالرحمن (29 · 05 · 2026).
+ * Header trimmed to bride-only branding per request — crest, Arabic
+ * date, Arabic couple line and groom's name are blank/hidden by
+ * default. User can re-enable any of them from edit mode.
  */
 export function defaultTimeline(): TimelineDoc {
   const mk = (time: string, role: string, name: string): TimelineEntry => ({
@@ -52,12 +55,12 @@ export function defaultTimeline(): TimelineDoc {
   });
   return {
     version: SEED_VERSION,
-    crestEyebrow: "R · A · WEDDING",
-    dateAr: "الجمعة · ٢٩ مايو",
+    crestEyebrow: "",
+    dateAr: "",
     dateLatin: "FRIDAY · 2026",
-    brideName: "Ruwaida",
-    groomName: "& ABDULRAHMAN",
-    coupleArabic: "رويـدا و عبدالرحمن",
+    brideName: "Ruwaida's Wedding",
+    groomName: "",
+    coupleArabic: "",
     appointmentsLabel: "المواعيد · APPOINTMENTS",
     entries: [
       mk("4:30 PM", "ميك اب ارتست", "لينا البغدادية"),
@@ -72,7 +75,7 @@ export function defaultTimeline(): TimelineDoc {
     signaturePreLabel: "عـــــروســـــكــــم",
     signatureName: "رويـدا",
     signatureFooter: "R · A · 29 . 05 . 2026",
-    hiddenBlocks: [],
+    hiddenBlocks: ["crest"],
   };
 }
 

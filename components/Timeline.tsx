@@ -645,13 +645,13 @@ export default function Timeline({ lang, t, onClose }: Props) {
                     fontWeight: 500,
                   }}
                 >
-                  ·{" "}
+                  {doc.dateAr && <>·{" "}</>}
                   <Editable
                     value={doc.dateLatin}
                     onChange={(v) => setField("dateLatin", v)}
                     enabled={editing}
                   />
-                  {" "}·
+                  {doc.dateAr && <>{" "}·</>}
                 </span>
               )}
             </div>
@@ -674,11 +674,12 @@ export default function Timeline({ lang, t, onClose }: Props) {
                 <span
                   style={{
                     display: "block",
-                    fontSize: 42,
+                    fontSize: "clamp(28px, 8vw, 42px)",
                     fontFamily: "var(--w-serif-en)",
                     fontStyle: "italic",
                     letterSpacing: "0.01em",
                     color: "var(--w-peach-deep)",
+                    lineHeight: 1.05,
                   }}
                 >
                   <Editable
