@@ -6,6 +6,7 @@ import {
   IconArrowUp,
   IconClock,
   IconClose,
+  IconEdit,
   IconExport,
   IconGlobe,
   IconHeart,
@@ -20,6 +21,7 @@ import {
   LogoMark,
   OrnamentMark,
 } from "@/components/icons";
+import { useEditMode } from "@/lib/editMode";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
 import type { Language, PlaylistSection, Track } from "@/types";
@@ -74,6 +76,8 @@ export default function Sidebar({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [open]);
+
+  const edit = useEditMode();
 
   function close() {
     setOpen(false);
@@ -238,7 +242,37 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="mt-auto px-3 pb-4">
+      <div className="mt-auto px-3 pb-4 space-y-1">
+        {edit.admin && (
+          <>
+            <button
+              type="button"
+              onClick={actAndClose(() => edit.enterEdit())}
+              className="nav-row"
+              data-tone="default"
+              style={{ color: "var(--gold-300)" }}
+            >
+              <IconEdit size={16} />
+              <span>Edit page</span>
+              <span
+                className="ms-auto label-micro"
+                style={{ color: "var(--gold-400)" }}
+              >
+                ADMIN
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={actAndClose(() => edit.signOut())}
+              className="nav-row"
+              style={{ fontSize: 11, opacity: 0.7 }}
+              title="Sign out of admin"
+            >
+              <IconClose size={14} />
+              <span>Sign out admin</span>
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={actAndClose(onToggleLang)}

@@ -1,5 +1,6 @@
 "use client";
 
+import EditableText from "@/components/EditableText";
 import { IconMusic, IconSparkle, OrnamentMark } from "@/components/icons";
 import type { Strings } from "@/lib/i18n";
 
@@ -48,31 +49,35 @@ export default function EmptyState({ t, onSamples }: Props) {
 
         <div className="eyebrow flex items-center justify-center gap-2">
           <OrnamentMark size={7} color="#d4af37" />
-          <span>{t.subtitle}</span>
+          <EditableText editKey="emptyState.subtitle" fallback={t.subtitle} />
           <OrnamentMark size={7} color="#d4af37" />
         </div>
 
-        <h3
+        <EditableText
+          as="h3"
+          editKey="emptyState.title"
+          fallback={t.addFirst}
           className="font-display italic mt-3"
           style={{
             fontSize: "clamp(28px, 4vw, 44px)",
             color: "var(--text)",
           }}
-        >
-          {t.addFirst}
-        </h3>
+        />
 
-        <p
+        <EditableText
+          as="p"
+          editKey="emptyState.hint"
+          fallback={t.emptyHint}
+          multiline
           className="mt-3 mx-auto"
           style={{
             color: "var(--text-muted)",
             fontSize: 15,
             lineHeight: 1.7,
             maxWidth: 460,
+            display: "block",
           }}
-        >
-          {t.emptyHint}
-        </p>
+        />
 
         <div className="mt-6">
           <button

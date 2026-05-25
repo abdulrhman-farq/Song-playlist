@@ -12,6 +12,10 @@ import EmptyState from "@/components/EmptyState";
 import BottomPlayer from "@/components/BottomPlayer";
 import Timeline from "@/components/Timeline";
 import Toast from "@/components/Toast";
+import EditModeToolbar from "@/components/EditModeToolbar";
+import EditableBlock from "@/components/EditableBlock";
+import EditableText from "@/components/EditableText";
+import { EditModeProvider } from "@/lib/editMode";
 import type { DropPos } from "@/components/TrackRow";
 import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
 import { dir as dirOf, strings } from "@/lib/i18n";
@@ -1028,6 +1032,8 @@ export default function PlaylistApp() {
   const unassigned = tracksBySection["__unassigned__"] ?? [];
 
   return (
+    <EditModeProvider>
+    <EditModeToolbar />
     <AppShell
       lang={lang}
       sidebar={
@@ -1081,6 +1087,7 @@ export default function PlaylistApp() {
       }
     >
       <div className="flex flex-col gap-10">
+        <EditableBlock editKey="hero" label="Hero">
         <PlaylistHero
           lang={lang}
           t={t}
@@ -1098,8 +1105,10 @@ export default function PlaylistApp() {
           onMore={handleImport}
           hasYouTubeTracks={hasYouTubeTracks}
         />
+        </EditableBlock>
 
         {/* Composer — upload + YouTube */}
+        <EditableBlock editKey="composer" label="Composer (upload + YouTube)">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
           <UploadPanel
             t={t}
@@ -1108,6 +1117,7 @@ export default function PlaylistApp() {
           />
           <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
         </div>
+        </EditableBlock>
 
         {/* Track list or empty state */}
         {tracks.length === 0 ? (
@@ -1143,14 +1153,17 @@ export default function PlaylistApp() {
           />
         )}
 
+        <EditableBlock editKey="footerNote" label="Footer note">
         <div className="text-center pt-4 pb-2">
-          <div
+          <EditableText
+            as="div"
+            editKey="footerNote"
+            fallback={t.footerNote}
             className="font-arabic-display"
             style={{ color: "var(--gold-400)", fontSize: 15 }}
-          >
-            {t.footerNote}
-          </div>
+          />
         </div>
+        </EditableBlock>
       </div>
 
       {/* Hidden YouTube host */}
@@ -1190,5 +1203,6 @@ export default function PlaylistApp() {
         />
       )}
     </AppShell>
+    </EditModeProvider>
   );
 }
