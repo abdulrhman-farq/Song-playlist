@@ -141,75 +141,29 @@ export default function PlaylistHero({
               </>
             )}
             <div
-              className="hero-art relative overflow-hidden gpu"
+              className="relative overflow-hidden gpu"
               style={{
                 width: "100%",
                 height: "100%",
                 borderRadius: 22,
                 boxShadow:
                   "0 30px 60px -20px rgba(0,0,0,0.7), 0 12px 30px -10px rgba(212,175,55,0.35), inset 0 0 0 1px rgba(255,255,255,0.08)",
+                background:
+                  "linear-gradient(180deg, #FAF5EC 0%, #EBE0CE 100%)",
               }}
             >
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ color: "rgba(255,255,255,0.92)" }}
-              >
-                <svg
-                  viewBox="0 0 100 100"
-                  width="135"
-                  height="135"
-                  aria-hidden
-                  style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.45))" }}
-                >
-                  <defs>
-                    <linearGradient id="art-stroke" x1="0%" x2="100%">
-                      <stop offset="0%" stopColor="#fff7d6" />
-                      <stop offset="50%" stopColor="#d4af37" />
-                      <stop offset="100%" stopColor="#fff7d6" />
-                    </linearGradient>
-                  </defs>
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="none"
-                    stroke="url(#art-stroke)"
-                    strokeWidth="0.6"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="30"
-                    fill="none"
-                    stroke="url(#art-stroke)"
-                    strokeWidth="0.4"
-                    opacity="0.65"
-                  />
-                  <path
-                    d="M50 18 Q35 50 50 82 Q65 50 50 18Z"
-                    fill="none"
-                    stroke="url(#art-stroke)"
-                    strokeWidth="0.5"
-                  />
-                  <path
-                    d="M18 50 Q50 35 82 50 Q50 65 18 50Z"
-                    fill="none"
-                    stroke="url(#art-stroke)"
-                    strokeWidth="0.5"
-                  />
-                  <text
-                    x="50"
-                    y="58"
-                    textAnchor="middle"
-                    fontFamily="Cormorant Garamond, serif"
-                    fontSize="20"
-                    fontStyle="italic"
-                    fill="url(#art-stroke)"
-                  >
-                    R &amp; A
-                  </text>
-                </svg>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Ruwaida's Wedding"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center 35%",
+                  display: "block",
+                }}
+              />
             </div>
           </div>
         </div>

@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   description:
     "A premium wedding playlist for Ruwaida & Abdulrahman — curate uploaded audio and YouTube tracks into one cinematic player.",
   icons: {
-    icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn46tPC90ZXh0Pjwvc3ZnPg==",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 

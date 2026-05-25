@@ -8,7 +8,7 @@ const KEY = "wedding-playlist:v1:timeline";
  * replaced by the current default. Once the user edits, the new
  * version stamp is saved alongside their changes and survives.
  */
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -75,7 +75,7 @@ export function defaultTimeline(): TimelineDoc {
     signaturePreLabel: "عـــــروســـــكــــم",
     signatureName: "رويـدا",
     signatureFooter: "R · A · 29 . 05 . 2026",
-    hiddenBlocks: ["crest"],
+    hiddenBlocks: [],
   };
 }
 

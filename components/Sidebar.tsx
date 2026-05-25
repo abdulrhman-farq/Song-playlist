@@ -18,7 +18,6 @@ import {
   IconShield,
   IconSparkle,
   IconTrash,
-  LogoMark,
   OrnamentMark,
 } from "@/components/icons";
 import { useEditMode } from "@/lib/editMode";
@@ -93,7 +92,30 @@ export default function Sidebar({
     <div className="flex flex-col h-full">
       {/* Brand */}
       <div className="px-5 py-6 flex items-center gap-3">
-        <LogoMark size={36} />
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            overflow: "hidden",
+            border: "1px solid rgba(212,175,55,0.32)",
+            boxShadow: "0 6px 14px -6px rgba(212,175,55,0.35)",
+            flexShrink: 0,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Ruwaida's Wedding"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center 35%",
+              display: "block",
+            }}
+          />
+        </div>
         <div className="min-w-0">
           <div className="eyebrow truncate" style={{ letterSpacing: "0.28em" }}>
             Maestro
@@ -102,7 +124,7 @@ export default function Sidebar({
             className="font-display text-[18px] mt-0.5 truncate"
             style={{ color: "var(--text)" }}
           >
-            Wedding Playlist
+            Ruwaida's Wedding
           </div>
         </div>
       </div>

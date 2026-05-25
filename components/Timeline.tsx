@@ -89,38 +89,35 @@ function Rings() {
   );
 }
 
-/* Wedding-monogram crest in champagne gold */
+/* Wedding crest — uses the bride's calligraphic logo */
 function Crest() {
   return (
-    <svg width="34" height="34" viewBox="0 0 64 64" fill="none" aria-hidden>
-      <circle
-        cx="32"
-        cy="32"
-        r="30"
-        stroke="var(--w-gold)"
-        strokeWidth="0.8"
+    <div
+      style={{
+        width: 70,
+        height: 84,
+        display: "inline-block",
+        position: "relative",
+      }}
+      aria-hidden
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo.png"
+        alt=""
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          objectPosition: "center",
+          display: "block",
+          // Multiply blend so the cream wash background fuses with the
+          // paper card behind it — gives the calligraphy a true ink-
+          // on-paper feel instead of a pasted-in rectangle.
+          mixBlendMode: "multiply",
+        }}
       />
-      <circle
-        cx="32"
-        cy="32"
-        r="24"
-        stroke="var(--w-gold-deep)"
-        strokeWidth="0.5"
-      />
-      <path
-        d="M32 8 Q22 32 32 56 Q42 32 32 8Z"
-        fill="none"
-        stroke="var(--w-peach-deep)"
-        strokeWidth="0.8"
-      />
-      <path
-        d="M8 32 Q32 22 56 32 Q32 42 8 32Z"
-        fill="none"
-        stroke="var(--w-peach-deep)"
-        strokeWidth="0.8"
-      />
-      <circle cx="32" cy="32" r="3" fill="var(--w-peach-deep)" />
-    </svg>
+    </div>
   );
 }
 
