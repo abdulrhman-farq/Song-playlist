@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import AppShell from "@/components/AppShell";
 import Sidebar from "@/components/Sidebar";
 import PlaylistHero from "@/components/PlaylistHero";
@@ -10,7 +11,6 @@ import { extractAudio, isVideoFile } from "@/lib/audioExtraction";
 import YouTubeAddPanel from "@/components/YouTubeAddPanel";
 import EmptyState from "@/components/EmptyState";
 import BottomPlayer from "@/components/BottomPlayer";
-import Timeline from "@/components/Timeline";
 import Toast from "@/components/Toast";
 import EditModeToolbar from "@/components/EditModeToolbar";
 import EditableBlock from "@/components/EditableBlock";
@@ -36,8 +36,6 @@ import {
   type EmbedCheckResult,
   type YTPlayerInstance,
 } from "@/lib/ytApi";
-import ValidationModal from "@/components/ValidationModal";
-import TrimModal from "@/components/TrimModal";
 import type {
   ExportedPlaylist,
   ExportedTrackYouTube,
@@ -46,6 +44,22 @@ import type {
   UploadTrack,
   YouTubeTrack,
 } from "@/types";
+
+/* ── Deferred imports ─────────────────────────────────────────────────
+   These three only mount when the user opens them — there's no value
+   in shipping them in the initial bundle. `ssr: false` because they
+   each touch browser-only APIs (window/localStorage) and aren't part
+   of the first paint anyway. Each lazy chunk lands separately so the
+   first-render JS budget stays tight. */
+const Timeline = dynamic(() => import("@/components/Timeline"), {
+  ssr: false,
+});
+const TrimModal = dynamic(() => import("@/components/TrimModal"), {
+  ssr: false,
+});
+const ValidationModal = dynamic(() => import("@/components/ValidationModal"), {
+  ssr: false,
+});
 
 /* ── Component ────────────────────────────────────────────────────────── */
 
@@ -1050,12 +1064,42 @@ export default function PlaylistApp() {
     [tracks],
   );
 
-  /* ── Suppress unused-var TypeScript noise for handlers wired
-        through props that the lint-mode strictness might otherwise
-        complain about. handleAssignSection is exposed via the realtime
-        hook for future use (e.g. SectionToolbar). */
+  // handleAssignSection is exposed via the realtime hook for future
+  // use (e.g. SectionToolbar drag-into-section). Suppress unused-var.
   void handleAssignSection;
   void loaded;
+
+  /* ── Memoised transport toggles ─────────────────────────
+     Stable function identities keep the memoised BottomPlayer + Sidebar
+     from re-rendering on every state tick. */
+  const handleToggleLang = useCallback(() => {
+    setLang((l) => (l === "ar" ? "en" : "ar"));
+  }, []);
+  const handleOpenTimeline = useCallback(() => setTimelineOpen(true), []);
+  const handleCloseTimeline = useCallback(() => setTimelineOpen(false), []);
+  const handleVolumeChange = useCallback((v: number) => {
+    setVolume(v);
+    setMuted(false);
+  }, [setVolume]);
+  const handleToggleMute = useCallback(() => setMuted((m) => !m), []);
+  const handleToggleRepeat = useCallback(
+    () => setRepeat(!repeat),
+    [repeat, setRepeat],
+  );
+  const handleToggleShuffle = useCallback(
+    () => setShuffle(!shuffle),
+    [shuffle, setShuffle],
+  );
+  const handleToggleAutoplay = useCallback(
+    () => setAutoplay(!autoplay),
+    [autoplay, setAutoplay],
+  );
+  const handleOpenTrim = useCallback((id: string) => setTrimEditId(id), []);
+  const handleCloseTrim = useCallback(() => setTrimEditId(null), []);
+  const handleCloseValidation = useCallback(
+    () => setValidationOpen(false),
+    [],
+  );
 
   /* ── Render ───────────────────────────────────────────── */
   const hasYouTubeTracks = tracks.some((x) => x.source === "youtube");
@@ -1077,7 +1121,7 @@ export default function PlaylistApp() {
           hasYouTubeTracks={hasYouTubeTracks}
           validating={validating}
           realtimeStatus={realtimeStatus}
-          onToggleLang={() => setLang((l) => (l === "ar" ? "en" : "ar"))}
+          onToggleLang={handleToggleLang}
           onImport={handleImport}
           onExport={handleExport}
           onSamples={handleLoadSamples}
@@ -1085,36 +1129,35 @@ export default function PlaylistApp() {
           onClearAll={handleClearAll}
           onAddSection={handleAddSection}
           onScrollToSection={scrollToSection}
-          onOpenTimeline={() => setTimelineOpen(true)}
+          onOpenTimeline={handleOpenTimeline}
         />
       }
       bottomPlayer={
-        <BottomPlayer
-          lang={lang}
-          t={t}
-          tracks={orderedTracks}
-          currentId={currentId}
-          isPlaying={isPlaying}
-          position={position}
-          duration={duration}
-          volume={volume}
-          muted={muted}
-          shuffle={shuffle}
-          repeat={repeat}
-          autoplay={autoplay}
-          onPlayPause={handlePlayPause}
-          onPrev={handlePrev}
-          onNext={handleNext}
-          onSeek={handleSeek}
-          onVolume={(v) => {
-            setVolume(v);
-            setMuted(false);
-          }}
-          onToggleMute={() => setMuted((m) => !m)}
-          onToggleRepeat={() => setRepeat(!repeat)}
-          onToggleShuffle={() => setShuffle(!shuffle)}
-          onToggleAutoplay={() => setAutoplay(!autoplay)}
-        />
+        <EditableBlock editKey="player.dock" label="Bottom player dock">
+          <BottomPlayer
+            lang={lang}
+            t={t}
+            tracks={orderedTracks}
+            currentId={currentId}
+            isPlaying={isPlaying}
+            position={position}
+            duration={duration}
+            volume={volume}
+            muted={muted}
+            shuffle={shuffle}
+            repeat={repeat}
+            autoplay={autoplay}
+            onPlayPause={handlePlayPause}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            onSeek={handleSeek}
+            onVolume={handleVolumeChange}
+            onToggleMute={handleToggleMute}
+            onToggleRepeat={handleToggleRepeat}
+            onToggleShuffle={handleToggleShuffle}
+            onToggleAutoplay={handleToggleAutoplay}
+          />
+        </EditableBlock>
       }
     >
       <div className="flex flex-col gap-10">
@@ -1131,8 +1174,8 @@ export default function PlaylistApp() {
           shuffle={shuffle}
           repeat={repeat}
           onPrimaryPlay={handlePrimaryPlay}
-          onToggleShuffle={() => setShuffle(!shuffle)}
-          onToggleRepeat={() => setRepeat(!repeat)}
+          onToggleShuffle={handleToggleShuffle}
+          onToggleRepeat={handleToggleRepeat}
           onMore={handleImport}
           hasYouTubeTracks={hasYouTubeTracks}
         />
@@ -1166,7 +1209,7 @@ export default function PlaylistApp() {
             onPlayTrack={handlePlay}
             onDeleteTrack={handleDelete}
             onRenameTrack={handleRename}
-            onEditTrim={(id) => setTrimEditId(id)}
+            onEditTrim={handleOpenTrim}
             onPlaySection={handlePlaySection}
             onRenameSection={handleRenameSection}
             onDeleteSection={handleDeleteSection}
@@ -1206,33 +1249,39 @@ export default function PlaylistApp() {
 
       <Toast message={toast} />
 
-      <ValidationModal
-        open={validationOpen}
-        onClose={() => setValidationOpen(false)}
-        tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
-        results={validation}
-        progress={validationProgress}
-        validating={validating}
-        t={t}
-        lang={lang}
-      />
+      {/* Dynamic-imported modals — only mount once the user opens them
+          so their JS doesn't ride the initial bundle. */}
+      {validationOpen && (
+        <ValidationModal
+          open={validationOpen}
+          onClose={handleCloseValidation}
+          tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
+          results={validation}
+          progress={validationProgress}
+          validating={validating}
+          t={t}
+          lang={lang}
+        />
+      )}
 
-      <TrimModal
-        open={trimEditId != null}
-        track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
-        currentPosition={position}
-        positionIsForThisTrack={trimEditId === currentId}
-        onClose={() => setTrimEditId(null)}
-        onSave={handleSaveTrim}
-        t={t}
-        lang={lang}
-      />
+      {trimEditId != null && (
+        <TrimModal
+          open={trimEditId != null}
+          track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
+          currentPosition={position}
+          positionIsForThisTrack={trimEditId === currentId}
+          onClose={handleCloseTrim}
+          onSave={handleSaveTrim}
+          t={t}
+          lang={lang}
+        />
+      )}
 
       {timelineOpen && (
         <Timeline
           lang={lang}
           t={t}
-          onClose={() => setTimelineOpen(false)}
+          onClose={handleCloseTimeline}
         />
       )}
     </AppShell>

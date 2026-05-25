@@ -159,6 +159,10 @@ function BottomPlayerImpl({
                 key={crossKey}
                 src={thumb}
                 alt=""
+                width={56}
+                height={56}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover text-cross"
               />
             ) : (
@@ -244,6 +248,7 @@ function BottomPlayerImpl({
               data-active={shuffle ? "true" : "false"}
               title={t.shuffle}
               aria-label={t.shuffle}
+              aria-pressed={shuffle}
             >
               <IconShuffle size={15} />
             </button>
@@ -293,6 +298,7 @@ function BottomPlayerImpl({
               data-active={repeat ? "true" : "false"}
               title={t.repeat}
               aria-label={t.repeat}
+              aria-pressed={repeat}
             >
               <IconRepeat size={15} />
             </button>
@@ -352,7 +358,7 @@ function BottomPlayerImpl({
                   }
                 }}
                 disabled={!current || !duration}
-                aria-label="seek"
+                aria-label={t.play + " — seek"}
                 style={{
                   background: "transparent",
                   margin: 0,
@@ -383,6 +389,7 @@ function BottomPlayerImpl({
             data-active={autoplay ? "true" : "false"}
             title={t.autoplay}
             aria-label={t.autoplay}
+            aria-pressed={autoplay}
             style={{ width: 34, height: 34 }}
           >
             <svg
@@ -409,6 +416,7 @@ function BottomPlayerImpl({
             onClick={onToggleMute}
             title={muted ? t.unmute : t.mute}
             aria-label={muted ? t.unmute : t.mute}
+            aria-pressed={muted}
             style={{ width: 34, height: 34 }}
           >
             {muted || volume === 0 ? (

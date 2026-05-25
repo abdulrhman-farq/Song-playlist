@@ -122,6 +122,13 @@ export default function RootLayout({
 
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning className={fontVariables}>
+      <head>
+        {/* Preconnect to YouTube thumbnail CDN — saves DNS+TLS on the
+            first track-row thumbnail. crossOrigin is needed because the
+            thumb requests are anonymous (no credentials). */}
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://i.ytimg.com" />
+      </head>
       <body>
         <div className="app-bg" aria-hidden />
         <div className="app-ambient" aria-hidden />

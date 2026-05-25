@@ -12,10 +12,18 @@ interface Props {
 }
 
 export default function AppShell({ lang, sidebar, bottomPlayer, children }: Props) {
+  // The skip-link label flips by language so screen readers in Arabic
+  // still get a localised announcement.
+  const skipLabel = lang === "ar" ? "تخطّ إلى القائمة" : "Skip to playlist";
   return (
     <div className="min-h-screen relative" dir={dirOf(lang)}>
+      {/* Keyboard-only skip link — first focusable element on the page */}
+      <a href="#main" className="skip-link">
+        {skipLabel}
+      </a>
       {sidebar}
       <main
+        id="main"
         className="relative"
         style={{
           paddingInlineStart: "var(--shell-pad-start, 0)",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   IconClock,
   IconEdit,
@@ -36,7 +36,7 @@ interface Props {
   dropPos: DropPos;
 }
 
-export default function TrackRow({
+function TrackRowImpl({
   track,
   idx,
   isCurrent,
@@ -143,8 +143,11 @@ export default function TrackRow({
           <img
             src={thumb}
             alt=""
+            width={40}
+            height={40}
             className="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div
@@ -289,3 +292,11 @@ export default function TrackRow({
     </div>
   );
 }
+
+/**
+ * Memoised so a re-render of the parent (PlaylistApp) doesn't cascade
+ * to every row. Identity-stable handlers from useCallback let React's
+ * shallow compare skip rows whose props haven't actually changed.
+ */
+const TrackRow = memo(TrackRowImpl);
+export default TrackRow;

@@ -158,7 +158,10 @@ export default function PlaylistHero({
               <EditableImage
                 editKey="hero.artwork"
                 fallbackSrc="/logo.png"
-                fallbackAlt="Ruwaida's Wedding"
+                fallbackAlt="Ruwaida's Wedding monogram"
+                width={240}
+                height={240}
+                eager
                 style={{
                   width: "100%",
                   height: "100%",
@@ -329,6 +332,8 @@ export default function PlaylistHero({
               data-active={shuffle ? "true" : "false"}
               onClick={onToggleShuffle}
               title={t.shuffle}
+              aria-label={t.shuffle}
+              aria-pressed={shuffle}
               style={{ width: 44, height: 44 }}
               disabled={tracks.length === 0}
             >
@@ -340,6 +345,8 @@ export default function PlaylistHero({
               data-active={repeat ? "true" : "false"}
               onClick={onToggleRepeat}
               title={t.repeat}
+              aria-label={t.repeat}
+              aria-pressed={repeat}
               style={{ width: 44, height: 44 }}
               disabled={tracks.length === 0}
             >
