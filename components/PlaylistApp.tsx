@@ -5,7 +5,8 @@ import AppShell from "@/components/AppShell";
 import Sidebar from "@/components/Sidebar";
 import PlaylistHero from "@/components/PlaylistHero";
 import TrackList from "@/components/TrackList";
-import UploadPanel from "@/components/UploadPanel";
+import UploadPanel, { type UploadProgress } from "@/components/UploadPanel";
+import { extractAudio, isVideoFile } from "@/lib/audioExtraction";
 import YouTubeAddPanel from "@/components/YouTubeAddPanel";
 import EmptyState from "@/components/EmptyState";
 import BottomPlayer from "@/components/BottomPlayer";
@@ -99,6 +100,8 @@ export default function PlaylistApp() {
   // UX
   const [toast, setToast] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [uploadProgress, setUploadProgress] =
+    useState<UploadProgress | null>(null);
 
   // YouTube embed validation
   const [validation, setValidation] = useState<Record<string, EmbedCheckResult>>({});
@@ -212,27 +215,47 @@ export default function PlaylistApp() {
       const added: UploadTrack[] = [];
       for (const file of files) {
         const id = uid();
+        const needsExtraction = isVideoFile(file);
         try {
-          await putBlob(id, file);
+          if (needsExtraction) {
+            setUploadProgress({ name: file.name, pct: 0 });
+          }
+          const { blob, outputName, extracted } = await extractAudio(
+            file,
+            (pct) => {
+              if (needsExtraction) {
+                setUploadProgress({ name: file.name, pct });
+              }
+            },
+          );
+          try {
+            await putBlob(id, blob);
+          } catch {
+            /* best-effort */
+          }
+          const dur = await probeAudioDuration(blob).catch(() => null);
+          added.push({
+            id,
+            source: "upload",
+            title: titleFromFilename(file.name),
+            duration: dur,
+            note: file.name,
+            blobName: extracted ? outputName : file.name,
+            mimeType: blob.type || file.type || "audio/*",
+            fileSize: blob.size,
+          });
         } catch {
-          /* best-effort */
+          flash(t.extractionFailed.replace("{name}", file.name));
+        } finally {
+          if (needsExtraction) setUploadProgress(null);
         }
-        const dur = await probeAudioDuration(file).catch(() => null);
-        added.push({
-          id,
-          source: "upload",
-          title: titleFromFilename(file.name),
-          duration: dur,
-          note: file.name,
-          blobName: file.name,
-          mimeType: file.type || "audio/*",
-          fileSize: file.size,
-        });
       }
-      setTracks((prev) => [...prev, ...added]);
-      flash(`+ ${added.length} ${added.length === 1 ? t.track : t.tracks}`);
+      if (added.length > 0) {
+        setTracks((prev) => [...prev, ...added]);
+        flash(`+ ${added.length} ${added.length === 1 ? t.track : t.tracks}`);
+      }
     },
-    [flash, t.track, t.tracks],
+    [flash, t.extractionFailed, t.track, t.tracks],
   );
 
   /* ── Add YouTube ───────────────────────────────────────── */
@@ -1078,7 +1101,11 @@ export default function PlaylistApp() {
 
         {/* Composer — upload + YouTube */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
-          <UploadPanel t={t} onAddFiles={handleAddFiles} />
+          <UploadPanel
+            t={t}
+            onAddFiles={handleAddFiles}
+            progress={uploadProgress}
+          />
           <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
         </div>
 
