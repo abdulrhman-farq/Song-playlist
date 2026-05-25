@@ -21,6 +21,14 @@ import {
   saveMeta,
 } from "@/lib/storage";
 import { fetchYouTubeTitle } from "@/lib/youtube";
+import {
+  checkEmbedsBatch,
+  loadYouTubeAPI,
+  type EmbedCheckResult,
+  type YTPlayerInstance,
+} from "@/lib/ytApi";
+import ValidationModal from "@/components/ValidationModal";
+import TrimModal from "@/components/TrimModal";
 import type {
   ExportedPlaylist,
   ExportedTrackYouTube,
@@ -29,70 +37,6 @@ import type {
   UploadTrack,
   YouTubeTrack,
 } from "@/types";
-
-/* ── YouTube IFrame API loader (shared) ───────────────────────────────── */
-
-interface YTPlayerInstance {
-  playVideo: () => void;
-  pauseVideo: () => void;
-  stopVideo: () => void;
-  seekTo: (s: number, allowSeekAhead?: boolean) => void;
-  setVolume: (v: number) => void;
-  getCurrentTime: () => number;
-  getDuration: () => number;
-  getPlayerState: () => number;
-  loadVideoById: (id: string) => void;
-  destroy: () => void;
-}
-
-interface YTNamespace {
-  Player: new (
-    target: HTMLElement | string,
-    opts: Record<string, unknown>,
-  ) => YTPlayerInstance;
-  PlayerState: {
-    ENDED: number;
-    PLAYING: number;
-    PAUSED: number;
-    BUFFERING: number;
-    CUED: number;
-    UNSTARTED: number;
-  };
-}
-
-declare global {
-  interface Window {
-    YT?: YTNamespace;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-let ytReady: Promise<YTNamespace> | null = null;
-function loadYouTubeAPI(): Promise<YTNamespace> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("no window"));
-  }
-  if (ytReady) return ytReady;
-  ytReady = new Promise<YTNamespace>((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve(window.YT);
-      return;
-    }
-    if (!document.querySelector('script[data-wp-yt-api="1"]')) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      tag.async = true;
-      tag.dataset.wpYtApi = "1";
-      document.head.appendChild(tag);
-    }
-    const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      prev?.();
-      if (window.YT) resolve(window.YT);
-    };
-  });
-  return ytReady;
-}
 
 /* ── Component ────────────────────────────────────────────────────────── */
 
@@ -121,6 +65,20 @@ export default function PlaylistApp() {
   // UX
   const [toast, setToast] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+
+  // YouTube embed validation
+  const [validation, setValidation] = useState<Record<string, EmbedCheckResult>>({});
+  const [validating, setValidating] = useState(false);
+  const [validationOpen, setValidationOpen] = useState(false);
+  const [validationProgress, setValidationProgress] = useState<{ done: number; total: number }>({
+    done: 0,
+    total: 0,
+  });
+
+  // Trim editor
+  const [trimEditId, setTrimEditId] = useState<string | null>(null);
+  /** Mirror of the active track's endAt so playback listeners can check it. */
+  const endAtRef = useRef<number | null>(null);
 
   // Refs
   const audioUrlCache = useRef<Record<string, string>>({});
@@ -261,6 +219,43 @@ export default function PlaylistApp() {
     flash(`+ ${s.length} ${t.tracks}`);
   }, [flash, t.tracks]);
 
+  /* ── Validate YouTube embeds ───────────────────────────── */
+  const handleValidate = useCallback(async () => {
+    const ytIds = tracks
+      .filter((x): x is YouTubeTrack => x.source === "youtube")
+      .map((x) => x.youtubeId);
+    if (ytIds.length === 0) {
+      flash(t.noYouTubeTracks);
+      return;
+    }
+    setValidating(true);
+    setValidationOpen(true);
+    setValidationProgress({ done: 0, total: ytIds.length });
+    // Clear any prior results so the badges visually reset
+    setValidation({});
+    try {
+      const results = await checkEmbedsBatch(
+        ytIds,
+        (done, total) => setValidationProgress({ done, total }),
+        3,
+      );
+      const flat: Record<string, EmbedCheckResult> = {};
+      results.forEach((v, k) => {
+        flat[k] = v;
+      });
+      setValidation(flat);
+      const broken = Array.from(results.values()).filter((v) => v.kind !== "ok").length;
+      flash(
+        broken === 0
+          ? t.allEmbedsOk
+          : `${broken} ${broken === 1 ? t.brokenEmbed : t.brokenEmbeds}`,
+      );
+    } finally {
+      setValidating(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracks, flash]);
+
   /* ── Stop / teardown ───────────────────────────────────── */
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -305,6 +300,24 @@ export default function PlaylistApp() {
   const handleRename = useCallback((id: string, title: string) => {
     setTracks((prev) => prev.map((x) => (x.id === id ? { ...x, title } : x)));
   }, []);
+
+  const handleSaveTrim = useCallback(
+    (id: string, startAt: number | null, endAt: number | null) => {
+      setTracks((prev) =>
+        prev.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                startAt: startAt ?? undefined,
+                endAt: endAt ?? undefined,
+              }
+            : x,
+        ),
+      );
+      flash(t.trimSaved);
+    },
+    [flash, t.trimSaved],
+  );
 
   const handleRenamePlaylist = useCallback((name: string) => {
     setPlaylistName(name);
@@ -456,6 +469,16 @@ export default function PlaylistApp() {
     if (ytPollRef.current) window.clearInterval(ytPollRef.current);
     setPosition(0);
 
+    const startAt =
+      typeof track.startAt === "number" && Number.isFinite(track.startAt) && track.startAt > 0
+        ? track.startAt
+        : undefined;
+    const endAt =
+      typeof track.endAt === "number" && Number.isFinite(track.endAt) && track.endAt > 0
+        ? track.endAt
+        : undefined;
+    endAtRef.current = endAt ?? null;
+
     if (track.source === "upload") {
       (async () => {
         const url = await getAudioUrl(track);
@@ -467,6 +490,16 @@ export default function PlaylistApp() {
         if (!a) return;
         a.src = url;
         a.volume = muted ? 0 : volume;
+        const seekToStart = () => {
+          if (startAt != null) {
+            try {
+              a.currentTime = startAt;
+            } catch {
+              /* ignore */
+            }
+          }
+        };
+        a.addEventListener("loadedmetadata", seekToStart, { once: true });
         try {
           await a.play();
           setIsPlaying(true);
@@ -489,6 +522,8 @@ export default function PlaylistApp() {
               rel: 0,
               playsinline: 1,
               disablekb: 1,
+              start: startAt,
+              end: endAt,
             },
             events: {
               onReady: (e: { target: YTPlayerInstance }) => {
@@ -526,7 +561,11 @@ export default function PlaylistApp() {
             },
           });
         } else {
-          ytPlayerRef.current.loadVideoById(track.youtubeId);
+          ytPlayerRef.current.loadVideoById({
+            videoId: track.youtubeId,
+            startSeconds: startAt,
+            endSeconds: endAt,
+          });
           ytPlayerRef.current.setVolume(Math.round((muted ? 0 : volume) * 100));
           startYTPoll();
         }
@@ -545,7 +584,15 @@ export default function PlaylistApp() {
     if (audioRef.current) return;
     const a = new Audio();
     a.preload = "metadata";
-    a.addEventListener("timeupdate", () => setPosition(a.currentTime));
+    a.addEventListener("timeupdate", () => {
+      setPosition(a.currentTime);
+      const end = endAtRef.current;
+      if (end != null && a.currentTime >= end) {
+        a.pause();
+        setIsPlaying(false);
+        handleTrackEndedRef.current();
+      }
+    });
     a.addEventListener("loadedmetadata", () => {
       const d = a.duration;
       if (Number.isFinite(d) && d > 0) {
@@ -788,6 +835,9 @@ export default function PlaylistApp() {
                 onExport={handleExport}
                 onSamples={handleLoadSamples}
                 onClearAll={handleClearAll}
+                onValidate={handleValidate}
+                hasYouTubeTracks={tracks.some((x) => x.source === "youtube")}
+                validating={validating}
                 hasTracks={tracks.length > 0}
               />
 
@@ -859,9 +909,15 @@ export default function PlaylistApp() {
                             isCurrent={tr.id === currentId}
                             isPlaying={tr.id === currentId && isPlaying}
                             t={t}
+                            validation={
+                              tr.source === "youtube"
+                                ? validation[tr.youtubeId] ?? null
+                                : null
+                            }
                             onPlay={handlePlay}
                             onDelete={handleDelete}
                             onRename={handleRename}
+                            onEditTrim={(id) => setTrimEditId(id)}
                             onDragStart={onDragStart}
                             onDragOver={onDragOver}
                             onDragLeave={onDragLeave}
@@ -930,6 +986,28 @@ export default function PlaylistApp() {
         </div>
 
         <Toast message={toast} />
+
+        <ValidationModal
+          open={validationOpen}
+          onClose={() => setValidationOpen(false)}
+          tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
+          results={validation}
+          progress={validationProgress}
+          validating={validating}
+          t={t}
+          lang={lang}
+        />
+
+        <TrimModal
+          open={trimEditId != null}
+          track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
+          currentPosition={position}
+          positionIsForThisTrack={trimEditId === currentId}
+          onClose={() => setTrimEditId(null)}
+          onSave={handleSaveTrim}
+          t={t}
+          lang={lang}
+        />
       </div>
     </div>
   );

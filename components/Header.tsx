@@ -7,6 +7,7 @@ import {
   IconExport,
   IconGlobe,
   IconImport,
+  IconShield,
   IconSparkle,
   IconTrash,
   LogoMark,
@@ -25,6 +26,9 @@ interface Props {
   onExport: () => void;
   onSamples: () => void;
   onClearAll: () => void;
+  onValidate: () => void;
+  hasYouTubeTracks: boolean;
+  validating: boolean;
   hasTracks: boolean;
 }
 
@@ -38,6 +42,9 @@ export default function Header({
   onExport,
   onSamples,
   onClearAll,
+  onValidate,
+  hasYouTubeTracks,
+  validating,
   hasTracks,
 }: Props) {
   const direction = dirOf(lang);
@@ -84,6 +91,18 @@ export default function Header({
             <IconSparkle size={13} />
             <span>{t.sample}</span>
           </button>
+          {hasYouTubeTracks && (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={onValidate}
+              disabled={validating}
+              title={t.validateHint}
+            >
+              <IconShield size={13} />
+              <span>{validating ? t.validating : t.validate}</span>
+            </button>
+          )}
           {hasTracks && (
             <button
               type="button"

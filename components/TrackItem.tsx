@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import {
+  IconClock,
   IconDrag,
   IconEdit,
   IconMusic,
   IconPlay,
   IconTrash,
   IconUpload,
+  IconWarn,
   IconYT,
 } from "@/components/icons";
 import { fmtTime } from "@/lib/format";
 import { ytThumbSmall } from "@/lib/youtube";
 import type { Strings } from "@/lib/i18n";
+import type { EmbedCheckResult } from "@/lib/ytApi";
 import type { Track } from "@/types";
 
 export type DropPos = "above" | "below" | null;
@@ -23,9 +26,11 @@ interface Props {
   isCurrent: boolean;
   isPlaying: boolean;
   t: Strings;
+  validation: EmbedCheckResult | null;
   onPlay: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  onEditTrim?: (id: string) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragOver: (e: React.DragEvent, id: string) => void;
   onDragLeave: (e: React.DragEvent, id: string) => void;
@@ -39,9 +44,11 @@ export default function TrackItem({
   isCurrent,
   isPlaying,
   t,
+  validation,
   onPlay,
   onDelete,
   onRename,
+  onEditTrim,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -186,7 +193,7 @@ export default function TrackItem({
             {track.title}
           </button>
         )}
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span
             className={
               "chip " + (track.source === "youtube" ? "youtube" : "upload")
@@ -201,6 +208,41 @@ export default function TrackItem({
               {track.source === "youtube" ? t.sourceYouTube : t.sourceUpload}
             </span>
           </span>
+          {validation && validation.kind !== "ok" && (
+            <span
+              className="chip"
+              style={{
+                color: "#C97B5B",
+                borderColor: "rgba(201,123,91,0.55)",
+                background: "rgba(201,123,91,0.08)",
+              }}
+              title={t.embedDisabledHint}
+            >
+              <IconWarn size={9} />
+              <span>
+                {validation.kind === "embed-disabled"
+                  ? t.validEmbedDisabled
+                  : validation.kind === "removed"
+                    ? t.validRemoved
+                    : validation.kind === "invalid"
+                      ? t.validInvalid
+                      : t.validError}
+              </span>
+            </span>
+          )}
+          {(track.startAt != null || track.endAt != null) && (
+            <span
+              className="chip"
+              style={{
+                color: "#957251",
+                borderColor: "rgba(149,114,81,0.45)",
+              }}
+              title={`${fmtTime(track.startAt)} – ${fmtTime(track.endAt)}`}
+            >
+              <IconClock size={9} />
+              <span>{t.trimNote}</span>
+            </span>
+          )}
           {track.note && (
             <span className="text-xs text-taupe italic truncate">
               {track.note}
@@ -219,6 +261,17 @@ export default function TrackItem({
 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-30 group-hover:opacity-100 transition">
+        {onEditTrim && (
+          <button
+            type="button"
+            className="btn-iconic"
+            style={{ width: 32, height: 32 }}
+            onClick={() => onEditTrim(track.id)}
+            title={t.trimTitle}
+          >
+            <IconClock size={13} />
+          </button>
+        )}
         <button
           type="button"
           className="btn-iconic"

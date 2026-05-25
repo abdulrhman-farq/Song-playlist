@@ -153,6 +153,30 @@ export const IconRepeat = (p: IconProps) => (
     <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" />
   </Svg>
 );
+export const IconShield = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
+    <path d="M9 12l2 2 4-4" />
+  </Svg>
+);
+export const IconWarn = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3l10 17H2L12 3z" />
+    <path d="M12 10v4" />
+    <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconClock = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Svg>
+);
+export const IconFolder = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
+  </Svg>
+);
 
 /** Small ornamental petal/diamond used in divider-orn and the header. */
 export const OrnamentMark = ({ size = 10, color = "#D89274" }: { size?: number; color?: string }) => (

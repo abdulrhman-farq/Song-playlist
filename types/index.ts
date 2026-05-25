@@ -8,6 +8,12 @@ export interface BaseTrack {
   duration: number | null;
   /** Free-form sub-line shown beneath the title (filename, "sample · classical", etc.). */
   note?: string;
+  /** Optional custom start time in seconds — skip past intros. */
+  startAt?: number;
+  /** Optional custom end time in seconds — stop before outros. */
+  endAt?: number;
+  /** Optional section grouping — see `Playlist.sections`. */
+  sectionId?: string;
 }
 
 export interface UploadTrack extends BaseTrack {
