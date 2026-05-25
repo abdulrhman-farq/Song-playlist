@@ -3,12 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   IconClock,
-  IconClose,
   IconEdit,
-  IconHeart,
-  IconMore,
   IconMusic,
-  IconPause,
   IconPlay,
   IconTrash,
   IconWarn,

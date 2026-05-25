@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  IconCheck,
   IconClose,
   IconEdit,
   IconExport,
@@ -352,22 +351,17 @@ export default function Timeline({ lang, t, onClose }: Props) {
 
     // Wait for the full custom font set to be loaded BEFORE we
     // snapshot — otherwise html-to-image falls back to system fonts
-    // and the exported card looks plain.
+    // and the exported card looks plain. With next/font the CSS
+    // family names are hashed, so we await `document.fonts.ready`
+    // (which resolves once every font triggered by the document's
+    // styles has loaded). The card is already rendered when this
+    // runs, so every face used by the Timeline is in-flight.
     try {
       if (typeof document !== "undefined" && document.fonts?.ready) {
+        // Force a layout read to ensure font-loading has started
+        cardRef.current.getBoundingClientRect();
         await document.fonts.ready;
       }
-      // Force-load every font we actually use, at the sizes we use them
-      await Promise.all([
-        document.fonts.load("700 24px 'Tajawal'"),
-        document.fonts.load("italic 42px 'Cormorant Garamond'"),
-        document.fonts.load("38px 'Italiana'"),
-        document.fonts.load("500 10px 'Cinzel'"),
-        document.fonts.load("700 19px 'Amiri'"),
-        document.fonts.load("500 17px 'Markazi Text'"),
-      ]).catch(() => {
-        /* font.load is best-effort */
-      });
     } catch {
       /* fonts API may not exist */
     }

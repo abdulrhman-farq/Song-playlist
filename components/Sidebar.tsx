@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import {
-  IconArrowDown,
-  IconArrowUp,
   IconClock,
   IconClose,
   IconEdit,
   IconExport,
   IconGlobe,
-  IconHeart,
   IconHome,
   IconImport,
   IconLibrary,
@@ -18,7 +15,6 @@ import {
   IconShield,
   IconSparkle,
   IconTrash,
-  OrnamentMark,
 } from "@/components/icons";
 import { useEditMode } from "@/lib/editMode";
 import { fmtTime } from "@/lib/format";

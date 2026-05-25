@@ -54,7 +54,7 @@ export default function EditModeToolbar() {
           letterSpacing: "0.32em",
           textTransform: "uppercase",
           color: "var(--gold-300, #e2bb42)",
-          fontFamily: "Cinzel, serif",
+          fontFamily: "var(--font-tracked)",
           fontWeight: 500,
         }}
       >
@@ -114,7 +114,7 @@ function pill({ tone }: { tone: "ghost" | "gold" | "danger" }): React.CSSPropert
     borderRadius: 999,
     border: "1px solid",
     cursor: "pointer",
-    fontFamily: "Cinzel, serif",
+    fontFamily: "var(--font-tracked)",
     fontWeight: 500,
     transition: "transform .15s ease, background .15s ease",
   };

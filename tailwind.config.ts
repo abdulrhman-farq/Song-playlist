@@ -45,9 +45,13 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['"Cormorant Garamond"', "Georgia", "serif"],
-        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
-        arabic: ['"Tajawal"', '"Markazi Text"', "Amiri", "sans-serif"],
+        display: ["var(--font-cormorant)", '"Cormorant Garamond"', "Georgia", "serif"],
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        arabic: ["var(--font-tajawal)", '"Tajawal"', '"Markazi Text"', "sans-serif"],
+        cinzel: ["var(--font-cinzel)", "Cinzel", "serif"],
+        italiana: ["var(--font-italiana)", "Italiana", "serif"],
+        amiri: ["var(--font-amiri)", "Amiri", "serif"],
+        markazi: ["var(--font-markazi)", '"Markazi Text"', "serif"],
       },
       boxShadow: {
         card: "0 10px 30px -10px rgba(0,0,0,0.7)",

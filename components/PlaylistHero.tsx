@@ -353,7 +353,7 @@ function CountdownChip({ label, days }: { label: string; days: number }) {
         fontSize: 11,
         letterSpacing: "0.18em",
         textTransform: "uppercase",
-        fontFamily: "Inter, sans-serif",
+        fontFamily: "var(--font-body)",
         fontWeight: 500,
         background: isClose
           ? "rgba(212,175,55,0.14)"
