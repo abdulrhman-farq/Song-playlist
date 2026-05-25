@@ -348,20 +348,56 @@ export default function Timeline({ lang, t, onClose }: Props) {
     setEditing(false);
     setExporting(true);
     setExportStatus(t.timelineExporting);
+    // Give React + browser two frames to settle so the toolbar and
+    // dashed edit underlines aren't part of the capture.
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
+
+    // Wait for the full custom font set to be loaded BEFORE we
+    // snapshot — otherwise html-to-image falls back to system fonts
+    // and the exported card looks plain.
+    try {
+      if (typeof document !== "undefined" && document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      // Force-load every font we actually use, at the sizes we use them
+      await Promise.all([
+        document.fonts.load("700 24px 'Tajawal'"),
+        document.fonts.load("italic 42px 'Cormorant Garamond'"),
+        document.fonts.load("38px 'Italiana'"),
+        document.fonts.load("500 10px 'Cinzel'"),
+        document.fonts.load("700 19px 'Amiri'"),
+        document.fonts.load("500 17px 'Markazi Text'"),
+      ]).catch(() => {
+        /* font.load is best-effort */
+      });
+    } catch {
+      /* fonts API may not exist */
+    }
+
     try {
       const { toPng } = await import("html-to-image");
       const node = cardRef.current;
       const rect = node.getBoundingClientRect();
-      // 1080px-wide retina-crisp target — perfect for phone share / stories
-      const targetWidth = 1080;
-      const pixelRatio = Math.max(2, targetWidth / Math.max(1, rect.width));
+      // 2160px-wide target → genuinely retina-crisp on any phone,
+      // sharp when printed. Minimum 3× pixel ratio guarantees clarity
+      // even if the visible card is already wide.
+      const targetWidth = 2160;
+      const pixelRatio = Math.max(3, targetWidth / Math.max(1, rect.width));
       const dataUrl = await toPng(node, {
         pixelRatio,
         backgroundColor: "#FAF5EC",
         cacheBust: true,
         skipFonts: false,
+        // Pin width/height to the actual rendered size so the canvas
+        // scales purely via pixelRatio (no anti-alias interpolation).
+        width: rect.width,
+        height: rect.height,
+        style: {
+          // Make sure nothing's scaled / transformed during capture
+          transform: "none",
+          transformOrigin: "0 0",
+        },
       });
       const filename = `wedding-timeline-29-05-2026.png`;
 
