@@ -17,21 +17,18 @@ import EditableBlock from "@/components/EditableBlock";
 import EditableText from "@/components/EditableText";
 import { EditModeProvider } from "@/lib/editMode";
 import type { DropPos } from "@/components/TrackRow";
-import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
+import { probeAudioDuration, titleFromFilename } from "@/lib/format";
 import { dir as dirOf, strings } from "@/lib/i18n";
 import { createSamples } from "@/lib/samples";
 import { createDefaultSections } from "@/lib/sections";
 import {
-  clearBlobs,
   deleteBlob,
   getBlob,
   loadLanguage,
-  loadMeta,
   putBlob,
-  sanitizeTracksForSave,
   saveLanguage,
-  saveMeta,
 } from "@/lib/storage";
+import { useRealtimePlaylist } from "@/lib/realtimeSync";
 import { fetchYouTubeTitle } from "@/lib/youtube";
 import {
   checkEmbedsBatch,
@@ -45,7 +42,6 @@ import type {
   ExportedPlaylist,
   ExportedTrackYouTube,
   Language,
-  PlaylistSection,
   Track,
   UploadTrack,
   YouTubeTrack,
@@ -54,15 +50,36 @@ import type {
 /* ── Component ────────────────────────────────────────────────────────── */
 
 export default function PlaylistApp() {
-  // Language
+  // Language (still purely local — language preference is per-device)
   const [lang, setLang] = useState<Language>("en");
   const t = strings[lang];
 
-  // Playlist
-  const [playlistName, setPlaylistName] = useState<string>(strings.en.untitled);
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [sections, setSections] = useState<PlaylistSection[]>([]);
+  // ── Realtime-backed playlist state ───────────────────────────
+  // The hook owns every cross-client field (name, tracks, sections,
+  // autoplay/shuffle/repeat/volume) and pushes updates over Supabase
+  // Realtime so every connected browser stays in sync.
+  const rt = useRealtimePlaylist(strings.en.untitled);
+  const tracks = rt.tracks;
+  const sections = rt.sections;
+  const playlistName = rt.settings.name;
+  const loaded = rt.loaded;
+  const realtimeStatus = rt.status;
+
+  // Settings: alias the hook setters so the rest of the component
+  // reads as before. These call Supabase under the hood.
+  const volume = rt.settings.volume;
+  const autoplay = rt.settings.autoplay;
+  const shuffle = rt.settings.shuffle;
+  const repeat = rt.settings.repeat;
+  const setVolume = rt.setVolume;
+  const setAutoplay = rt.setAutoplay;
+  const setShuffle = rt.setShuffle;
+  const setRepeat = rt.setRepeat;
+
   const [currentId, setCurrentId] = useState<string | null>(null);
+
+  // Seed defaults once if the DB starts empty
+  const seededRef = useRef(false);
 
   /**
    * The track list ordered by section: for each section (in section
@@ -89,21 +106,14 @@ export default function PlaylistApp() {
     return out;
   }, [tracks, sections]);
 
-  // Transport state
+  // Transport state (transient, not synced)
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
-
-  // Modes
-  const [autoplay, setAutoplay] = useState(true);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState(false);
 
   // UX
   const [toast, setToast] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
   const [uploadProgress, setUploadProgress] =
     useState<UploadProgress | null>(null);
 
@@ -132,7 +142,7 @@ export default function PlaylistApp() {
   const ytPollRef = useRef<number | null>(null);
   const currentIdRef = useRef<string | null>(null);
 
-  /* ── Load saved state on mount ───────────────────────────── */
+  /* ── Load language preference on mount (still local-only) ── */
   useEffect(() => {
     const savedLang =
       loadLanguage() ??
@@ -141,25 +151,6 @@ export default function PlaylistApp() {
         ? "ar"
         : "en");
     setLang(savedLang);
-
-    const saved = loadMeta();
-    if (saved) {
-      setPlaylistName(saved.name || strings[savedLang].untitled);
-      setTracks(Array.isArray(saved.tracks) ? saved.tracks : []);
-      if (Array.isArray(saved.sections) && saved.sections.length > 0) {
-        setSections(saved.sections);
-      } else {
-        setSections(createDefaultSections(strings[savedLang]));
-      }
-      if (typeof saved.volume === "number") setVolume(saved.volume);
-      if (typeof saved.autoplay === "boolean") setAutoplay(saved.autoplay);
-      if (typeof saved.shuffle === "boolean") setShuffle(saved.shuffle);
-      if (typeof saved.repeat === "boolean") setRepeat(saved.repeat);
-    } else {
-      setPlaylistName(strings[savedLang].untitled);
-      setSections(createDefaultSections(strings[savedLang]));
-    }
-    setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -171,19 +162,20 @@ export default function PlaylistApp() {
     saveLanguage(lang);
   }, [lang]);
 
-  /* ── Persist metadata ──────────────────────────────────── */
+  /* ── Seed default sections once if the DB is empty ──────── */
   useEffect(() => {
-    if (!loaded) return;
-    saveMeta({
-      name: playlistName,
-      tracks: sanitizeTracksForSave(tracks),
-      sections,
-      volume,
-      autoplay,
-      shuffle,
-      repeat,
+    if (!loaded || seededRef.current) return;
+    if (sections.length > 0) {
+      seededRef.current = true;
+      return;
+    }
+    seededRef.current = true;
+    const defaults = createDefaultSections(strings[lang]);
+    void rt.replaceAll({
+      sections: defaults.map((s) => ({ label: s.label })),
     });
-  }, [loaded, playlistName, tracks, sections, volume, autoplay, shuffle, repeat]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, sections.length, lang]);
 
   /* ── Toast helper ──────────────────────────────────────── */
   const toastTimer = useRef<number | null>(null);
@@ -216,9 +208,8 @@ export default function PlaylistApp() {
   /* ── Add files ─────────────────────────────────────────── */
   const handleAddFiles = useCallback(
     async (files: File[]) => {
-      const added: UploadTrack[] = [];
+      let addedCount = 0;
       for (const file of files) {
-        const id = uid();
         const needsExtraction = isVideoFile(file);
         try {
           if (needsExtraction) {
@@ -232,34 +223,34 @@ export default function PlaylistApp() {
               }
             },
           );
+          const dur = await probeAudioDuration(blob).catch(() => null);
+          // Insert into Supabase first to obtain the row id, then key
+          // the local IndexedDB blob under that same id so playback
+          // resolution (getBlob(track.id)) works without translation.
+          const id = await rt.addTrack({
+            source: "upload",
+            title: titleFromFilename(file.name),
+            blobName: extracted ? outputName : file.name,
+            note: file.name,
+            duration: dur,
+          });
           try {
             await putBlob(id, blob);
           } catch {
             /* best-effort */
           }
-          const dur = await probeAudioDuration(blob).catch(() => null);
-          added.push({
-            id,
-            source: "upload",
-            title: titleFromFilename(file.name),
-            duration: dur,
-            note: file.name,
-            blobName: extracted ? outputName : file.name,
-            mimeType: blob.type || file.type || "audio/*",
-            fileSize: blob.size,
-          });
+          addedCount += 1;
         } catch {
           flash(t.extractionFailed.replace("{name}", file.name));
         } finally {
           if (needsExtraction) setUploadProgress(null);
         }
       }
-      if (added.length > 0) {
-        setTracks((prev) => [...prev, ...added]);
-        flash(`+ ${added.length} ${added.length === 1 ? t.track : t.tracks}`);
+      if (addedCount > 0) {
+        flash(`+ ${addedCount} ${addedCount === 1 ? t.track : t.tracks}`);
       }
     },
-    [flash, t.extractionFailed, t.track, t.tracks],
+    [flash, rt, t.extractionFailed, t.track, t.tracks],
   );
 
   /* ── Add YouTube ───────────────────────────────────────── */
@@ -270,26 +261,34 @@ export default function PlaylistApp() {
         const fetched = await fetchYouTubeTitle(id);
         finalTitle = fetched ?? `YouTube · ${id}`;
       }
-      const tr: YouTubeTrack = {
-        id: uid(),
+      await rt.addTrack({
         source: "youtube",
         title: finalTitle,
         youtubeId: id,
         url,
         duration: null,
-      };
-      setTracks((prev) => [...prev, tr]);
+      });
       flash("+ " + finalTitle);
     },
-    [flash],
+    [flash, rt],
   );
 
   /* ── Samples ──────────────────────────────────────────── */
-  const handleLoadSamples = useCallback(() => {
+  const handleLoadSamples = useCallback(async () => {
     const s = createSamples();
-    setTracks((prev) => [...prev, ...s]);
+    for (const sample of s) {
+      if (sample.source !== "youtube") continue;
+      await rt.addTrack({
+        source: "youtube",
+        title: sample.title,
+        youtubeId: sample.youtubeId,
+        url: sample.url,
+        note: sample.note,
+        duration: sample.duration,
+      });
+    }
     flash(`+ ${s.length} ${t.tracks}`);
-  }, [flash, t.tracks]);
+  }, [flash, rt, t.tracks]);
 
   /* ── Validate YouTube embeds ───────────────────────────── */
   const handleValidate = useCallback(async () => {
@@ -360,25 +359,28 @@ export default function PlaylistApp() {
           delete audioUrlCache.current[id];
         }
       }
-      setTracks((prev) => prev.filter((x) => x.id !== id));
+      await rt.removeTrack(id);
       if (currentId === id) {
         stopPlayback();
         setCurrentId(null);
       }
     },
-    [currentId, stopPlayback, tracks],
+    [currentId, rt, stopPlayback, tracks],
   );
 
-  const handleRename = useCallback((id: string, title: string) => {
-    setTracks((prev) => prev.map((x) => (x.id === id ? { ...x, title } : x)));
-  }, []);
+  const handleRename = useCallback(
+    (id: string, title: string) => {
+      void rt.renameTrack(id, title);
+    },
+    [rt],
+  );
 
   /* ── Section ops ───────────────────────────────────────── */
   const handleAddSection = useCallback(() => {
     const label = prompt(t.addSection + " — " + t.renameSection);
     if (!label) return;
-    setSections((prev) => [...prev, { id: uid(), label: label.trim() }]);
-  }, [t.addSection, t.renameSection]);
+    void rt.addSection(label.trim());
+  }, [rt, t.addSection, t.renameSection]);
 
   const handleRenameSection = useCallback(
     (id: string) => {
@@ -388,203 +390,138 @@ export default function PlaylistApp() {
       if (label == null) return;
       const trimmed = label.trim();
       if (!trimmed) return;
-      setSections((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, label: trimmed } : s)),
-      );
+      void rt.renameSection(id, trimmed);
     },
-    [sections, t.renameSection],
+    [rt, sections, t.renameSection],
   );
 
-  const handleDeleteSection = useCallback((id: string) => {
-    setSections((prev) => prev.filter((s) => s.id !== id));
-    setTracks((prev) =>
-      prev.map((tr) => (tr.sectionId === id ? { ...tr, sectionId: undefined } : tr)),
-    );
-  }, []);
+  const handleDeleteSection = useCallback(
+    (id: string) => {
+      void rt.removeSection(id);
+    },
+    [rt],
+  );
 
-  const handleMoveSection = useCallback((id: string, direction: -1 | 1) => {
-    setSections((prev) => {
-      const idx = prev.findIndex((s) => s.id === id);
-      if (idx < 0) return prev;
-      const target = idx + direction;
-      if (target < 0 || target >= prev.length) return prev;
-      const next = prev.slice();
-      [next[idx], next[target]] = [next[target], next[idx]];
-      return next;
-    });
-  }, []);
+  const handleMoveSection = useCallback(
+    (id: string, direction: -1 | 1) => {
+      void rt.moveSection(id, direction);
+    },
+    [rt],
+  );
 
   /**
    * Drag-reorder: move section `fromId` to land above or below `toId`.
-   * Mirrors the track-row pattern.
+   * We compute the up/down delta and call moveSection repeatedly.
    */
   const handleReorderSections = useCallback(
-    (fromId: string, toId: string, pos: "above" | "below") => {
+    async (fromId: string, toId: string, pos: "above" | "below") => {
       if (fromId === toId) return;
-      setSections((prev) => {
-        const fromIdx = prev.findIndex((s) => s.id === fromId);
-        const toIdx = prev.findIndex((s) => s.id === toId);
-        if (fromIdx < 0 || toIdx < 0) return prev;
-        const next = prev.slice();
-        const [moved] = next.splice(fromIdx, 1);
-        let insertAt = next.findIndex((s) => s.id === toId);
-        if (insertAt < 0) insertAt = next.length;
-        if (pos === "below") insertAt += 1;
-        next.splice(insertAt, 0, moved);
-        return next;
-      });
+      const fromIdx = sections.findIndex((s) => s.id === fromId);
+      const toIdx = sections.findIndex((s) => s.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      let desiredIdx = toIdx;
+      if (pos === "below") desiredIdx += 1;
+      if (desiredIdx > fromIdx) desiredIdx -= 1;
+      const delta = desiredIdx - fromIdx;
+      if (delta === 0) return;
+      const step: -1 | 1 = delta > 0 ? 1 : -1;
+      for (let i = 0; i < Math.abs(delta); i++) {
+        // Sequentially nudge; each move updates Supabase + waits for
+        // the row to come back over realtime before computing the next.
+        await rt.moveSection(fromId, step);
+      }
     },
-    [],
+    [rt, sections],
   );
 
   /**
    * Clone a section's label + every track inside it. New section lands
-   * directly after the source; new tracks get fresh IDs and are
-   * inserted after the source's tracks so playback order stays sane.
-   *
-   * Upload tracks are cloned by reference (same blob id is shared)
-   * which is fine for read playback — duplicates point at the same
-   * audio data. Deleting one duplicate does NOT delete the blob
-   * (handleDelete only purges the blob when deleting any single
-   * track that owns it, which is still correct for the original).
+   * directly after the source; new tracks get fresh IDs in the same
+   * order. Uploaded blobs are NOT cloned in IndexedDB — duplicate
+   * upload rows reference the same blob key (same id is impossible
+   * since UUIDs are fresh, so duplicate uploads on remote devices
+   * are unplayable until that device uploads its own copy).
    */
-  const handleDuplicateSection = useCallback((id: string) => {
-    setSections((prevSections) => {
-      const idx = prevSections.findIndex((s) => s.id === id);
-      if (idx < 0) return prevSections;
-      const source = prevSections[idx];
-      const newSectionId = uid();
-      const cloned: PlaylistSection = {
-        id: newSectionId,
-        label: `${source.label} (copy)`,
-      };
-      const next = prevSections.slice();
-      next.splice(idx + 1, 0, cloned);
-
-      // Clone all tracks belonging to the source section, in their
-      // current order, into the new section. Done inside the same
-      // setSections to read the latest sections; track clone happens
-      // in a separate setTracks below.
-      setTracks((prevTracks) => {
-        const sourceTracks = prevTracks.filter((tr) => tr.sectionId === id);
-        if (sourceTracks.length === 0) return prevTracks;
-        const clones: Track[] = sourceTracks.map((tr) => {
-          if (tr.source === "youtube") {
-            return {
-              ...tr,
-              id: uid(),
-              sectionId: newSectionId,
-            };
-          }
-          return {
-            ...tr,
-            id: uid(),
+  const handleDuplicateSection = useCallback(
+    async (id: string) => {
+      const sourceIdx = sections.findIndex((s) => s.id === id);
+      if (sourceIdx < 0) return;
+      const source = sections[sourceIdx];
+      const newSectionId = await rt.addSection(`${source.label} (copy)`);
+      const sourceTracks = tracks.filter((tr) => tr.sectionId === id);
+      for (const tr of sourceTracks) {
+        if (tr.source === "youtube") {
+          await rt.addTrack({
+            source: "youtube",
+            title: tr.title,
+            youtubeId: tr.youtubeId,
+            url: tr.url,
+            note: tr.note,
+            duration: tr.duration,
             sectionId: newSectionId,
-          };
-        });
-        // Insert the clones right after the last source-section track
-        // so they sit visually adjacent to the new section header.
-        let insertAt = prevTracks.length;
-        for (let i = prevTracks.length - 1; i >= 0; i--) {
-          if (prevTracks[i].sectionId === id) {
-            insertAt = i + 1;
-            break;
-          }
+          });
+        } else {
+          await rt.addTrack({
+            source: "upload",
+            title: tr.title,
+            blobName: tr.blobName,
+            note: tr.note,
+            duration: tr.duration,
+            sectionId: newSectionId,
+          });
         }
-        const out = prevTracks.slice();
-        out.splice(insertAt, 0, ...clones);
-        return out;
-      });
-
-      return next;
-    });
-  }, []);
+      }
+    },
+    [rt, sections, tracks],
+  );
 
   const handleAssignSection = useCallback(
     (trackId: string, sectionId: string | null) => {
-      setTracks((prev) =>
-        prev.map((tr) =>
-          tr.id === trackId
-            ? { ...tr, sectionId: sectionId ?? undefined }
-            : tr,
-        ),
-      );
+      void rt.moveTrackToSection(trackId, sectionId);
     },
-    [],
+    [rt],
   );
 
   const handleSaveTrim = useCallback(
     (id: string, startAt: number | null, endAt: number | null) => {
-      setTracks((prev) =>
-        prev.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                startAt: startAt ?? undefined,
-                endAt: endAt ?? undefined,
-              }
-            : x,
-        ),
-      );
+      void rt.updateTrack(id, { startAt, endAt });
       flash(t.trimSaved);
     },
-    [flash, t.trimSaved],
+    [flash, rt, t.trimSaved],
   );
 
-  const handleRenamePlaylist = useCallback((name: string) => {
-    setPlaylistName(name);
-  }, []);
+  const handleRenamePlaylist = useCallback(
+    (name: string) => {
+      rt.setName(name);
+    },
+    [rt],
+  );
 
   function moveTrack(fromId: string, toId: string, pos: DropPos) {
-    setTracks((prev) => {
-      const target = prev.find((x) => x.id === toId);
-      if (!target) return prev;
-      // Adopt the target's section so cross-section drops "stick".
-      const updated = prev.map((x) =>
-        x.id === fromId ? { ...x, sectionId: target.sectionId } : x,
-      );
-      const from = updated.findIndex((x) => x.id === fromId);
-      if (from < 0) return prev;
-      const [moved] = updated.splice(from, 1);
-      let insertAt = updated.findIndex((x) => x.id === toId);
-      if (insertAt < 0) insertAt = updated.length;
-      if (pos === "below") insertAt += 1;
-      updated.splice(insertAt, 0, moved);
-      return updated;
-    });
+    if (pos == null) return;
+    void rt.moveTrack(fromId, toId, pos);
   }
 
   /** Drop a track onto a section header (or into an empty section). */
   function dropOnSection(fromId: string, sectionId: string | null) {
-    setTracks((prev) => {
-      if (!prev.some((x) => x.id === fromId)) return prev;
-      const updated = prev.map((x) =>
-        x.id === fromId ? { ...x, sectionId: sectionId ?? undefined } : x,
-      );
-      const fromIdx = updated.findIndex((x) => x.id === fromId);
-      const [moved] = updated.splice(fromIdx, 1);
-      // Place after the last track currently in that section, or at end.
-      let insertAt = updated.length;
-      for (let i = updated.length - 1; i >= 0; i--) {
-        if ((updated[i].sectionId ?? null) === sectionId) {
-          insertAt = i + 1;
-          break;
-        }
-      }
-      updated.splice(insertAt, 0, moved);
-      return updated;
-    });
+    void rt.moveTrackToSection(fromId, sectionId);
   }
 
   const handleClearAll = useCallback(async () => {
     if (!confirm(t.confirmClear)) return;
-    await clearBlobs();
+    // Local cleanup first (blobs/object URLs live on this device)
+    const uploadIds = tracks
+      .filter((tr) => tr.source === "upload")
+      .map((tr) => tr.id);
+    for (const id of uploadIds) {
+      await deleteBlob(id).catch(() => {});
+    }
     Object.values(audioUrlCache.current).forEach((u) => URL.revokeObjectURL(u));
     audioUrlCache.current = {};
     stopPlayback();
     setCurrentId(null);
-    setTracks([]);
-  }, [stopPlayback, t.confirmClear]);
+    await rt.clearAllTracks();
+  }, [rt, stopPlayback, t.confirmClear, tracks]);
 
   /* ── Import / Export ───────────────────────────────────── */
   const handleExport = useCallback(() => {
@@ -639,28 +576,29 @@ export default function PlaylistApp() {
       try {
         const text = await f.text();
         const data = JSON.parse(text) as ExportedPlaylist;
-        if (data.name) setPlaylistName(data.name);
+        if (data.name) rt.setName(data.name);
         if (Array.isArray(data.tracks)) {
-          const incoming: YouTubeTrack[] = data.tracks
-            .filter((x) => x.source === "youtube" && x.youtubeId)
-            .map((x) => ({
-              id: uid(),
+          let count = 0;
+          for (const x of data.tracks) {
+            if (x.source !== "youtube" || !x.youtubeId) continue;
+            await rt.addTrack({
               source: "youtube",
               title: x.title || "Untitled",
               youtubeId: x.youtubeId,
               url: x.url,
               duration: x.duration ?? null,
               note: x.note,
-            }));
-          setTracks((prev) => [...prev, ...incoming]);
-          flash(`+ ${incoming.length} ${t.tracks}`);
+            });
+            count += 1;
+          }
+          flash(`+ ${count} ${t.tracks}`);
         }
       } catch {
         alert(t.importErr);
       }
     };
     inp.click();
-  }, [flash, t.importErr, t.tracks]);
+  }, [flash, rt, t.importErr, t.tracks]);
 
   /* ── Playback engine ───────────────────────────────────── */
 
@@ -721,6 +659,8 @@ export default function PlaylistApp() {
       (async () => {
         const url = await getAudioUrl(track);
         if (!url) {
+          // Remote-uploaded track without a local blob — surface a
+          // helpful message rather than silently failing.
           flash(t.audioMissing);
           return;
         }
@@ -784,11 +724,10 @@ export default function PlaylistApp() {
                       setDuration(d);
                       const trkId = currentIdRef.current;
                       if (trkId) {
-                        setTracks((prev) =>
-                          prev.map((x) =>
-                            x.id === trkId && !x.duration ? { ...x, duration: d } : x,
-                          ),
-                        );
+                        const cur = tracks.find((x) => x.id === trkId);
+                        if (cur && !cur.duration) {
+                          void rt.updateTrack(trkId, { duration: d });
+                        }
                       }
                     }
                   } catch {
@@ -837,11 +776,8 @@ export default function PlaylistApp() {
         setDuration(d);
         const trkId = currentIdRef.current;
         if (trkId) {
-          setTracks((prev) =>
-            prev.map((x) =>
-              x.id === trkId && !x.duration ? { ...x, duration: d } : x,
-            ),
-          );
+          // Persist newly-probed duration so other clients see it too
+          void rt.updateTrack(trkId, { duration: d });
         }
       }
     });
@@ -852,6 +788,7 @@ export default function PlaylistApp() {
       handleTrackEndedRef.current();
     });
     audioRef.current = a;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Live volume update
@@ -1113,6 +1050,13 @@ export default function PlaylistApp() {
     [tracks],
   );
 
+  /* ── Suppress unused-var TypeScript noise for handlers wired
+        through props that the lint-mode strictness might otherwise
+        complain about. handleAssignSection is exposed via the realtime
+        hook for future use (e.g. SectionToolbar). */
+  void handleAssignSection;
+  void loaded;
+
   /* ── Render ───────────────────────────────────────────── */
   const hasYouTubeTracks = tracks.some((x) => x.source === "youtube");
   const unassigned = tracksBySection["__unassigned__"] ?? [];
@@ -1132,6 +1076,7 @@ export default function PlaylistApp() {
           sections={sections}
           hasYouTubeTracks={hasYouTubeTracks}
           validating={validating}
+          realtimeStatus={realtimeStatus}
           onToggleLang={() => setLang((l) => (l === "ar" ? "en" : "ar"))}
           onImport={handleImport}
           onExport={handleExport}
@@ -1144,34 +1089,32 @@ export default function PlaylistApp() {
         />
       }
       bottomPlayer={
-        <EditableBlock editKey="player.dock" label="Bottom player dock">
-          <BottomPlayer
-            lang={lang}
-            t={t}
-            tracks={orderedTracks}
-            currentId={currentId}
-            isPlaying={isPlaying}
-            position={position}
-            duration={duration}
-            volume={volume}
-            muted={muted}
-            shuffle={shuffle}
-            repeat={repeat}
-            autoplay={autoplay}
-            onPlayPause={handlePlayPause}
-            onPrev={handlePrev}
-            onNext={handleNext}
-            onSeek={handleSeek}
-            onVolume={(v) => {
-              setVolume(v);
-              setMuted(false);
-            }}
-            onToggleMute={() => setMuted((m) => !m)}
-            onToggleRepeat={() => setRepeat((r) => !r)}
-            onToggleShuffle={() => setShuffle((s) => !s)}
-            onToggleAutoplay={() => setAutoplay((a) => !a)}
-          />
-        </EditableBlock>
+        <BottomPlayer
+          lang={lang}
+          t={t}
+          tracks={orderedTracks}
+          currentId={currentId}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          volume={volume}
+          muted={muted}
+          shuffle={shuffle}
+          repeat={repeat}
+          autoplay={autoplay}
+          onPlayPause={handlePlayPause}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onSeek={handleSeek}
+          onVolume={(v) => {
+            setVolume(v);
+            setMuted(false);
+          }}
+          onToggleMute={() => setMuted((m) => !m)}
+          onToggleRepeat={() => setRepeat(!repeat)}
+          onToggleShuffle={() => setShuffle(!shuffle)}
+          onToggleAutoplay={() => setAutoplay(!autoplay)}
+        />
       }
     >
       <div className="flex flex-col gap-10">
@@ -1188,8 +1131,8 @@ export default function PlaylistApp() {
           shuffle={shuffle}
           repeat={repeat}
           onPrimaryPlay={handlePrimaryPlay}
-          onToggleShuffle={() => setShuffle((s) => !s)}
-          onToggleRepeat={() => setRepeat((r) => !r)}
+          onToggleShuffle={() => setShuffle(!shuffle)}
+          onToggleRepeat={() => setRepeat(!repeat)}
           onMore={handleImport}
           hasYouTubeTracks={hasYouTubeTracks}
         />
