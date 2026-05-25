@@ -60,6 +60,9 @@ const TrimModal = dynamic(() => import("@/components/TrimModal"), {
 const ValidationModal = dynamic(() => import("@/components/ValidationModal"), {
   ssr: false,
 });
+const ClipsWorkbench = dynamic(() => import("@/components/ClipsWorkbench"), {
+  ssr: false,
+});
 
 /* ── Component ────────────────────────────────────────────────────────── */
 
@@ -142,6 +145,7 @@ export default function PlaylistApp() {
 
   // Trim editor
   const [trimEditId, setTrimEditId] = useState<string | null>(null);
+  const [clipsWorkbenchOpen, setClipsWorkbenchOpen] = useState(false);
   // Timeline overlay
   const [timelineOpen, setTimelineOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
@@ -265,6 +269,36 @@ export default function PlaylistApp() {
       }
     },
     [flash, rt, t.extractionFailed, t.track, t.tracks],
+  );
+
+  /* ── DJ Clips Workbench — accept the merged WAV blob and add as
+        a new upload-source track so it plays like any uploaded mp3. */
+  const handleMergeComplete = useCallback(
+    async (args: { blob: Blob; title: string; duration: number }) => {
+      const id = await rt.addTrack({
+        source: "upload",
+        title: args.title,
+        blobName: `${args.title}.wav`,
+        note: `mixed · ${Math.round(args.duration)}s`,
+        duration: args.duration,
+      });
+      try {
+        await putBlob(id, args.blob);
+      } catch {
+        /* best effort */
+      }
+      flash(t.mergeSuccess);
+    },
+    [rt, flash, t.mergeSuccess],
+  );
+
+  const handleOpenClipsWorkbench = useCallback(
+    () => setClipsWorkbenchOpen(true),
+    [],
+  );
+  const handleCloseClipsWorkbench = useCallback(
+    () => setClipsWorkbenchOpen(false),
+    [],
   );
 
   /* ── Add YouTube ───────────────────────────────────────── */
@@ -1036,23 +1070,46 @@ export default function PlaylistApp() {
     return groups;
   }, [tracks, sections]);
 
-  /* ── Keyboard shortcut: space toggles play ──────────────── */
+  /* ── DJ keyboard shortcuts ───────────────────────────────
+        Space → play/pause
+        ←     → previous track   (→ in RTL)
+        →     → next track       (← in RTL)
+        M     → toggle mute
+        Bail when focus is in a text input / contentEditable. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== " " && e.code !== "Space") return;
       const el = document.activeElement as HTMLElement | null;
       if (
         el &&
-        (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
       ) {
         return;
       }
-      e.preventDefault();
-      handlePlayPause();
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handlePlayPause();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        lang === "ar" ? handleNext() : handlePrev();
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        lang === "ar" ? handlePrev() : handleNext();
+        return;
+      }
+      if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setMuted((m) => !m);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePlayPause]);
+  }, [handlePlayPause, handleNext, handlePrev, lang]);
 
   /* ── Derived ──────────────────────────────────────────── */
   const totalSeconds = useMemo(
@@ -1130,6 +1187,7 @@ export default function PlaylistApp() {
           onAddSection={handleAddSection}
           onScrollToSection={scrollToSection}
           onOpenTimeline={handleOpenTimeline}
+          onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
       bottomPlayer={
@@ -1274,6 +1332,18 @@ export default function PlaylistApp() {
           onSave={handleSaveTrim}
           t={t}
           lang={lang}
+        />
+      )}
+
+      {clipsWorkbenchOpen && (
+        <ClipsWorkbench
+          open={clipsWorkbenchOpen}
+          onClose={handleCloseClipsWorkbench}
+          tracks={tracks}
+          lang={lang}
+          t={t}
+          getBlob={getBlob}
+          onMergeComplete={handleMergeComplete}
         />
       )}
 

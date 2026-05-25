@@ -14,6 +14,7 @@ import {
   IconImport,
   IconLibrary,
   IconMenu,
+  IconMusic,
   IconPlus,
   IconShield,
   IconSparkle,
@@ -45,6 +46,7 @@ interface Props {
   onAddSection: () => void;
   onScrollToSection: (sectionId: string) => void;
   onOpenTimeline: () => void;
+  onOpenClipsWorkbench?: () => void;
 }
 
 export default function Sidebar({
@@ -66,6 +68,7 @@ export default function Sidebar({
   onAddSection,
   onScrollToSection,
   onOpenTimeline,
+  onOpenClipsWorkbench,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -291,6 +294,17 @@ export default function Sidebar({
             <EditableText
               editKey="sidebar.actions.validate"
               fallback={validating ? t.validating : t.validate}
+            />
+          </ActionRow>
+        )}
+        {onOpenClipsWorkbench && (
+          <ActionRow
+            icon={<IconMusic size={16} />}
+            onClick={actAndClose(onOpenClipsWorkbench)}
+          >
+            <EditableText
+              editKey="sidebar.actions.mixClips"
+              fallback={t.clipsWorkbench}
             />
           </ActionRow>
         )}
