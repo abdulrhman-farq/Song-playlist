@@ -474,6 +474,150 @@ html[dir="rtl"] body {
     box-shadow var(--dur-base) var(--ease-out);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Wedding-stationery identity — scoped to the Timeline only.
+   Everywhere else stays on the dark dark+gold system.
+   ───────────────────────────────────────────────────────────── */
+.wed-identity {
+  --w-ivory: #f4ecdf;
+  --w-ivory-deep: #ebe0ce;
+  --w-paper: #faf5ec;
+  --w-champagne: #e5d5bc;
+  --w-champagne-2: #d9c5a5;
+  --w-peach-soft: #f2d4be;
+  --w-peach: #e9b89a;
+  --w-peach-deep: #d89274;
+  --w-rose: #c97b5b;
+  --w-blush: #f6ddcb;
+  --w-ink: #3a2c20;
+  --w-brown: #6b4a35;
+  --w-brown-soft: #8c6a4f;
+  --w-taupe: #a38a72;
+  --w-gold: #b8956a;
+  --w-gold-deep: #957251;
+  --w-gold-soft: #d9be96;
+  --w-line: rgba(58, 44, 32, 0.18);
+  --w-line-soft: rgba(58, 44, 32, 0.08);
+
+  --w-serif-ar: "Amiri", "Markazi Text", serif;
+  --w-body-ar: "Markazi Text", "Amiri", serif;
+  --w-serif-en: "Cormorant Garamond", "Cardo", serif;
+  --w-display-en: "Italiana", "Cormorant Garamond", serif;
+  --w-label-en: "Cinzel", "Cormorant Garamond", serif;
+
+  color: var(--w-ink);
+}
+
+/* Paper background with very subtle multi-layer noise + watercolor wash */
+.wed-paper {
+  background-color: var(--w-paper);
+  background-image:
+    radial-gradient(ellipse 60% 40% at 12% 100%, rgba(233, 184, 154, 0.32), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 90% 8%, rgba(233, 184, 154, 0.28), transparent 65%),
+    radial-gradient(ellipse 30% 22% at 95% 95%, rgba(216, 146, 116, 0.18), transparent 70%),
+    radial-gradient(ellipse 25% 18% at 5% 5%, rgba(216, 146, 116, 0.10), transparent 70%);
+  position: relative;
+  isolation: isolate;
+}
+.wed-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(127deg, rgba(58, 44, 32, 0.018) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(37deg, rgba(58, 44, 32, 0.014) 0 1px, transparent 1px 5px);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 0;
+}
+.wed-paper > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Eyebrow — Cinzel tracked uppercase */
+.wed-eyebrow {
+  font-family: var(--w-label-en);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--w-brown-soft);
+}
+
+/* Hairline framed corner inside the card */
+.wed-frame {
+  position: absolute;
+  inset: 14px;
+  border: 0.6px solid rgba(58, 44, 32, 0.16);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+/* Tracked editorial label (small caps) */
+.wed-tracked {
+  font-family: var(--w-label-en);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+/* Toolbar pill buttons for the wedding-id toolbar */
+.wed-btn {
+  background: transparent;
+  border: 0.6px solid var(--w-line);
+  color: var(--w-brown);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: var(--w-label-en);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.wed-btn:hover:not(:disabled) {
+  background: var(--w-brown);
+  color: var(--w-paper);
+  border-color: var(--w-brown);
+}
+.wed-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.wed-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.wed-btn.wed-btn-gold {
+  background: var(--w-peach-deep);
+  color: var(--w-paper);
+  border-color: var(--w-peach-deep);
+}
+.wed-btn.wed-btn-gold:hover:not(:disabled) {
+  background: var(--w-rose);
+  border-color: var(--w-rose);
+}
+.wed-btn.wed-btn-danger {
+  color: var(--w-rose);
+  border-color: rgba(201, 123, 91, 0.45);
+}
+.wed-btn.wed-btn-danger:hover:not(:disabled) {
+  background: var(--w-rose);
+  color: var(--w-paper);
+  border-color: var(--w-rose);
+}
+
+/* Inline-edit underline — peach-tinted dash */
+.wed-editable[data-editing="true"] {
+  border-bottom: 1px dashed rgba(216, 146, 116, 0.5);
+  outline: none;
+}
+
 /* Skeleton loading shimmer */
 @keyframes skeleton {
   0% {

@@ -24,14 +24,12 @@ interface Props {
   onClose: () => void;
 }
 
-/* Petal-dot used down the spine of the timeline. */
+/* ── Ornaments ──────────────────────────────────────────────── */
+
 function PetalDot() {
   return (
-    <svg viewBox="0 0 10 10" width="14" height="14" aria-hidden>
-      <path
-        d="M5 9 C 1 6, 1 2, 5 3 C 9 2, 9 6, 5 9 Z"
-        fill="currentColor"
-      />
+    <svg viewBox="0 0 10 10" width="13" height="13" aria-hidden>
+      <path d="M5 9 C 1 6, 1 2, 5 3 C 9 2, 9 6, 5 9 Z" fill="currentColor" />
     </svg>
   );
 }
@@ -43,7 +41,7 @@ function OrnamentDivider() {
       width="140"
       height="12"
       aria-hidden
-      style={{ color: "var(--gold-300)" }}
+      style={{ color: "var(--w-peach-deep)" }}
     >
       <line
         x1="2"
@@ -77,12 +75,12 @@ function OrnamentDivider() {
 function Rings() {
   return (
     <svg
-      width="56"
-      height="26"
+      width="48"
+      height="22"
       viewBox="0 0 44 22"
       fill="none"
       aria-hidden
-      style={{ color: "var(--gold-300)" }}
+      style={{ color: "var(--w-peach-deep)" }}
     >
       <circle cx="16" cy="13" r="7.2" stroke="currentColor" strokeWidth="1.1" />
       <circle cx="26" cy="13" r="7.2" stroke="currentColor" strokeWidth="1.1" />
@@ -91,8 +89,43 @@ function Rings() {
   );
 }
 
-/* Tiny inline-editable string. Renders as a span; on click upgrades
-   to a contentEditable that commits on blur or Enter. */
+/* Wedding-monogram crest in champagne gold */
+function Crest() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 64 64" fill="none" aria-hidden>
+      <circle
+        cx="32"
+        cy="32"
+        r="30"
+        stroke="var(--w-gold)"
+        strokeWidth="0.8"
+      />
+      <circle
+        cx="32"
+        cy="32"
+        r="24"
+        stroke="var(--w-gold-deep)"
+        strokeWidth="0.5"
+      />
+      <path
+        d="M32 8 Q22 32 32 56 Q42 32 32 8Z"
+        fill="none"
+        stroke="var(--w-peach-deep)"
+        strokeWidth="0.8"
+      />
+      <path
+        d="M8 32 Q32 22 56 32 Q32 42 8 32Z"
+        fill="none"
+        stroke="var(--w-peach-deep)"
+        strokeWidth="0.8"
+      />
+      <circle cx="32" cy="32" r="3" fill="var(--w-peach-deep)" />
+    </svg>
+  );
+}
+
+/* ── Inline editable text ──────────────────────────────────── */
+
 function Editable({
   value,
   onChange,
@@ -117,14 +150,10 @@ function Editable({
   };
   return (
     <span
-      className={className}
+      className={`wed-editable ${className ?? ""}`}
+      data-editing={enabled ? "true" : "false"}
       style={{
         ...style,
-        outline: "none",
-        borderBottom: enabled
-          ? "1px dashed rgba(212,175,55,0.35)"
-          : "1px dashed transparent",
-        transition: "border-color var(--dur-fast) var(--ease-out)",
         cursor: enabled ? "text" : "default",
         whiteSpace: multiline ? "pre-wrap" : "nowrap",
         display: multiline ? "block" : "inline-block",
@@ -146,6 +175,8 @@ function Editable({
   );
 }
 
+/* ── Main ──────────────────────────────────────────────────── */
+
 export default function Timeline({ lang, t, onClose }: Props) {
   const [doc, setDoc] = useState<TimelineDoc>(() => defaultTimeline());
   const [editing, setEditing] = useState(true);
@@ -164,11 +195,11 @@ export default function Timeline({ lang, t, onClose }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !exporting) onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, exporting]);
 
   function updateEntry(id: string, patch: Partial<TimelineEntry>) {
     setDoc((d) => ({
@@ -187,38 +218,30 @@ export default function Timeline({ lang, t, onClose }: Props) {
     setDoc(defaultTimeline());
   }
 
-  /**
-   * Capture the timeline card as a PNG sized for mobile share /
-   * status. On phones with Web Share API and file-share capability
-   * push straight to the share sheet; otherwise download.
-   */
   async function exportAsImage() {
     if (!cardRef.current) return;
     const wasEditing = editing;
     setEditing(false);
     setExporting(true);
     setExportStatus(t.timelineExporting);
-    // Give React + browser two frames to settle so the toolbar and
-    // dashed edit underlines aren't part of the capture.
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
     try {
       const { toPng } = await import("html-to-image");
       const node = cardRef.current;
       const rect = node.getBoundingClientRect();
-      // Target 1080px-wide output (2× a 540px card → retina-crisp on phones,
-      // perfect for WhatsApp / Stories / Reels).
+      // 1080px-wide retina-crisp target — perfect for phone share / stories
       const targetWidth = 1080;
       const pixelRatio = Math.max(2, targetWidth / Math.max(1, rect.width));
       const dataUrl = await toPng(node, {
         pixelRatio,
-        backgroundColor: "#0a0a0a",
+        backgroundColor: "#FAF5EC",
         cacheBust: true,
         skipFonts: false,
       });
       const filename = `wedding-timeline-29-05-2026.png`;
 
-      // Try Web Share API first (native share sheet on phones)
+      // Native share on mobile when possible
       let shared = false;
       try {
         const res = await fetch(dataUrl);
@@ -265,284 +288,299 @@ export default function Timeline({ lang, t, onClose }: Props) {
 
   return (
     <div
-      className="modal-overlay"
-      style={{ padding: "20px" }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !exporting) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(58, 44, 32, 0.55)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        zIndex: 200,
+        animation: "fade-in 0.18s var(--ease-out)",
       }}
       dir="rtl"
     >
       <div
-        ref={cardRef}
-        className="contain-paint relative gpu"
+        className="wed-identity"
         style={{
-          width: "min(560px, 100%)",
+          width: "min(460px, 100%)",
           maxHeight: exporting ? "none" : "92vh",
           overflow: exporting ? "visible" : "auto",
-          borderRadius: 22,
-          background:
-            "radial-gradient(ellipse at 0% 0%, rgba(212,175,55,0.18), transparent 55%)," +
-            " radial-gradient(ellipse at 100% 100%, rgba(34,197,94,0.08), transparent 60%)," +
-            " linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-panel) 100%)",
-          border: "1px solid var(--line-soft)",
-          boxShadow: exporting ? "none" : "var(--shadow-xl)",
-          animation: exporting ? "none" : "modal-in 0.4s var(--ease-spring)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
         }}
       >
-        {/* Inner hairline frame */}
+        {/* Toolbar — sits OUTSIDE the captured card */}
         <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 14,
-            border: "1px solid rgba(212,175,55,0.22)",
-            borderRadius: 14,
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Toolbar — excluded from the export capture via display:none */}
-        <div
-          className="sticky top-0 z-20"
           style={{
             display: exporting ? "none" : "flex",
-            background:
-              "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(18,18,18,0.7) 100%)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            borderBottom: "1px solid var(--line-subtle)",
-            padding: "12px 20px",
-            alignItems: "center",
             gap: 8,
             flexWrap: "wrap",
-            justifyContent: "space-between",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              className="btn-base btn-ghost"
-              onClick={() => setEditing((v) => !v)}
-              style={{ padding: "7px 14px", fontSize: 11 }}
-              disabled={exporting}
-            >
-              <IconEdit size={12} />
-              <span>{editing ? t.timelineDone : t.timelineEdit}</span>
-            </button>
-            {editing && (
-              <button
-                type="button"
-                className="btn-base btn-ghost"
-                onClick={addEntry}
-                style={{ padding: "7px 14px", fontSize: 11 }}
-              >
-                <IconPlus size={12} />
-                <span>{t.timelineAdd}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn-base btn-gold"
-              onClick={exportAsImage}
-              disabled={exporting}
-              style={{ padding: "7px 14px", fontSize: 11 }}
-              title={t.timelineExport}
-            >
-              {exporting ? (
-                <span className="spinner" />
-              ) : (
-                <IconExport size={12} />
-              )}
-              <span>
-                {exportStatus ?? t.timelineExport}
-              </span>
-            </button>
-            {editing && (
-              <button
-                type="button"
-                className="btn-base btn-ghost"
-                onClick={reset}
-                style={{
-                  padding: "7px 14px",
-                  fontSize: 11,
-                  color: "var(--danger)",
-                  borderColor: "rgba(243,160,138,0.3)",
-                }}
-              >
-                <IconTrash size={12} />
-                <span>{t.timelineReset}</span>
-              </button>
-            )}
-          </div>
           <button
             type="button"
-            className="icon-btn"
-            onClick={onClose}
-            title={t.cancel}
-            aria-label={t.cancel}
+            className="wed-btn"
+            onClick={() => setEditing((v) => !v)}
             disabled={exporting}
           >
-            <IconClose size={16} />
+            <IconEdit size={11} />
+            <span>{editing ? t.timelineDone : t.timelineEdit}</span>
+          </button>
+          {editing && (
+            <button type="button" className="wed-btn" onClick={addEntry}>
+              <IconPlus size={11} />
+              <span>{t.timelineAdd}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="wed-btn wed-btn-gold"
+            onClick={exportAsImage}
+            disabled={exporting}
+            title={t.timelineExport}
+          >
+            {exporting ? (
+              <span
+                className="spinner"
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderColor: "rgba(250,245,236,0.4)",
+                  borderTopColor: "var(--w-paper)",
+                }}
+              />
+            ) : (
+              <IconExport size={11} />
+            )}
+            <span>{exportStatus ?? t.timelineExport}</span>
+          </button>
+          {editing && (
+            <button
+              type="button"
+              className="wed-btn wed-btn-danger"
+              onClick={reset}
+            >
+              <IconTrash size={11} />
+              <span>{t.timelineReset}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="wed-btn"
+            onClick={onClose}
+            disabled={exporting}
+            aria-label={t.cancel}
+            title={t.cancel}
+            style={{ paddingInline: 12 }}
+          >
+            <IconClose size={11} />
           </button>
         </div>
 
-        {/* Card body */}
+        {/* THE CAPTURED CARD */}
         <div
-          className="relative"
+          ref={cardRef}
+          className="wed-paper"
           style={{
-            padding: "44px 28px 36px",
+            position: "relative",
+            border: "0.8px solid rgba(58,44,32,0.15)",
+            borderRadius: 4,
+            padding: "52px 32px 46px",
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.6) inset, 0 30px 60px -30px rgba(58,44,32,0.45), 0 8px 20px -10px rgba(58,44,32,0.25)",
+            overflow: "hidden",
+            background:
+              "radial-gradient(ellipse 60% 40% at 8% 100%, rgba(233,184,154,0.40), transparent 60%)," +
+              " radial-gradient(ellipse 50% 35% at 95% 5%, rgba(233,184,154,0.32), transparent 65%)," +
+              " linear-gradient(180deg, var(--w-paper) 0%, var(--w-ivory) 100%)",
+            animation: exporting ? "none" : "modal-in 0.32s var(--ease-spring)",
           }}
         >
+          {/* Inner hairline frame */}
+          <div className="wed-frame" aria-hidden />
+
           {/* Crest */}
           <div
-            className="flex flex-col items-center gap-1.5"
-            style={{ marginBottom: 16 }}
+            className="flex flex-col items-center"
+            style={{ gap: 6, marginTop: 6 }}
           >
-            <svg
-              width="34"
-              height="34"
-              viewBox="0 0 64 64"
-              fill="none"
-              aria-hidden
-              style={{ opacity: 0.9 }}
-            >
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                stroke="var(--gold-400)"
-                strokeWidth="0.8"
-              />
-              <circle
-                cx="32"
-                cy="32"
-                r="24"
-                stroke="var(--gold-500)"
-                strokeWidth="0.5"
-              />
-              <path
-                d="M32 8 Q22 32 32 56 Q42 32 32 8Z"
-                fill="none"
-                stroke="var(--gold-300)"
-                strokeWidth="0.8"
-              />
-              <path
-                d="M8 32 Q32 22 56 32 Q32 42 8 32Z"
-                fill="none"
-                stroke="var(--gold-300)"
-                strokeWidth="0.8"
-              />
-              <circle cx="32" cy="32" r="3" fill="var(--gold-300)" />
-            </svg>
-            <div
-              className="eyebrow"
-              style={{ fontSize: 9, letterSpacing: "0.42em" }}
-            >
+            <Crest />
+            <div className="wed-eyebrow" style={{ fontSize: 8.5 }}>
               R · A · WEDDING
             </div>
           </div>
 
-          {/* Header date */}
+          {/* Date header — day of week + full date for clarity */}
           <div
             className="text-center"
             style={{
-              fontFamily: "'Tajawal', 'Markazi Text', serif",
+              fontFamily: "var(--w-serif-ar)",
               fontSize: 17,
-              color: "var(--text)",
+              color: "var(--w-ink)",
               lineHeight: 1.9,
               fontWeight: 500,
+              marginTop: 16,
             }}
           >
-            {t.timelineSubtitle}
+            الجمعة
+            <span
+              style={{
+                fontFamily: "var(--w-display-en)",
+                fontSize: 16,
+                letterSpacing: "0.22em",
+                color: "var(--w-rose)",
+                margin: "0 10px",
+                fontWeight: 500,
+              }}
+            >
+              · FRIDAY ·
+            </span>
+            ٢٩ مايو
+            <span
+              style={{
+                fontFamily: "var(--w-display-en)",
+                fontSize: 16,
+                letterSpacing: "0.22em",
+                color: "var(--w-rose)",
+                margin: "0 8px",
+                fontWeight: 500,
+              }}
+            >
+              · 2026
+            </span>
           </div>
 
-          {/* Names */}
+          {/* Names (Latin) */}
           <div
             dir="ltr"
             className="text-center"
-            style={{ margin: "22px 0 4px", lineHeight: 0.95 }}
+            style={{
+              marginTop: 24,
+              marginBottom: 6,
+              fontFamily: "var(--w-display-en)",
+              color: "var(--w-brown)",
+              lineHeight: 0.95,
+            }}
           >
-            <div
-              className="font-display italic"
+            <span
               style={{
-                fontSize: 44,
-                color: "var(--gold-300)",
+                display: "block",
+                fontSize: 42,
+                fontFamily: "var(--w-serif-en)",
+                fontStyle: "italic",
                 letterSpacing: "0.01em",
+                color: "var(--w-peach-deep)",
               }}
             >
               Ruwaida
-            </div>
-            <div
-              className="font-display"
+            </span>
+            <span
               style={{
+                display: "block",
                 fontSize: 38,
-                color: "var(--text)",
-                letterSpacing: "0.18em",
-                marginTop: 4,
+                fontFamily: "var(--w-display-en)",
+                letterSpacing: "0.16em",
+                color: "var(--w-brown)",
+                marginTop: 2,
               }}
             >
               &amp; ABDULRAHMAN
-            </div>
+            </span>
           </div>
+
+          {/* Arabic names */}
           <div
             className="text-center"
             style={{
-              fontFamily: "'Tajawal', 'Markazi Text', serif",
+              fontFamily: "var(--w-serif-ar)",
               fontSize: 19,
-              color: "var(--text-dim)",
+              color: "var(--w-brown)",
               letterSpacing: "0.04em",
-              marginTop: 6,
-              fontWeight: 600,
+              marginTop: 8,
+              fontWeight: 700,
             }}
           >
             رويـدا و عبدالرحمن
           </div>
 
-          {/* Ornament */}
-          <div className="flex justify-center" style={{ margin: "18px 0 10px" }}>
+          {/* Ornament divider */}
+          <div className="flex justify-center" style={{ margin: "18px 0 6px" }}>
             <OrnamentDivider />
           </div>
 
+          {/* Appointments label — makes the purpose unambiguous when shared */}
+          <div
+            className="text-center"
+            style={{
+              marginTop: 8,
+              marginBottom: 2,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--w-label-en)",
+                fontSize: 10,
+                letterSpacing: "0.42em",
+                textTransform: "uppercase",
+                color: "var(--w-brown-soft)",
+              }}
+            >
+              المواعيد · APPOINTMENTS
+            </span>
+          </div>
+
           {/* Timeline */}
-          <div className="relative" style={{ padding: "8px 4px" }}>
-            {/* Dashed gold center spine */}
+          <div
+            style={{ position: "relative", margin: "8px 0 18px", padding: "0 4px" }}
+          >
+            {/* Dashed center spine (gold) */}
             <div
               aria-hidden
               style={{
                 position: "absolute",
-                top: 8,
-                bottom: 8,
+                top: 6,
+                bottom: 6,
                 left: "50%",
                 width: 1,
                 transform: "translateX(-0.5px)",
                 background:
-                  "repeating-linear-gradient(to bottom, var(--gold-400) 0, var(--gold-400) 4px, transparent 4px, transparent 8px)",
-                opacity: 0.7,
+                  "repeating-linear-gradient(to bottom, var(--w-gold-deep) 0, var(--w-gold-deep) 4px, transparent 4px, transparent 8px)",
+                opacity: 0.75,
               }}
             />
 
             {doc.entries.map((entry, idx) => {
-              const odd = idx % 2 === 0; // first row is "odd" in 1-indexed CSS
+              const odd = idx % 2 === 0;
               return (
                 <div
                   key={entry.id}
-                  className="relative grid items-center"
                   style={{
+                    position: "relative",
+                    display: "grid",
                     gridTemplateColumns: "1fr 30px 1fr",
+                    alignItems: "center",
                     gap: 10,
                     padding: "14px 0",
                   }}
                 >
-                  {/* Time */}
                   <div
                     style={{
                       gridColumn: odd ? 1 : 3,
                       textAlign: "center",
-                      fontFamily: "'Cormorant Garamond', serif",
-                      fontStyle: "italic",
+                      fontFamily: "var(--w-display-en)",
                       fontSize: 24,
-                      letterSpacing: "0.14em",
-                      color: "var(--gold-300)",
+                      letterSpacing: "0.18em",
+                      color: "var(--w-rose)",
                       direction: "ltr",
                       whiteSpace: "nowrap",
                       fontWeight: 500,
@@ -554,22 +592,21 @@ export default function Timeline({ lang, t, onClose }: Props) {
                       enabled={editing}
                     />
                   </div>
-                  {/* Dot */}
                   <div
-                    className="flex items-center justify-center gpu"
-                    style={{ color: "var(--gold-300)" }}
+                    className="flex items-center justify-center"
+                    style={{ color: "var(--w-rose)" }}
                   >
                     <PetalDot />
                   </div>
-                  {/* Entry */}
                   <div
                     style={{
                       gridColumn: odd ? 3 : 1,
                       textAlign: "center",
-                      fontFamily: "'Tajawal', 'Markazi Text', serif",
-                      fontSize: 17,
-                      color: "var(--text)",
-                      lineHeight: 1.55,
+                      fontFamily: "var(--w-serif-ar)",
+                      fontSize: 19,
+                      color: "var(--w-ink)",
+                      lineHeight: 1.5,
+                      fontWeight: 400,
                     }}
                   >
                     <Editable
@@ -577,18 +614,21 @@ export default function Timeline({ lang, t, onClose }: Props) {
                       onChange={(v) => updateEntry(entry.id, { role: v })}
                       enabled={editing}
                       style={{
-                        color: "var(--text-dim)",
+                        color: "var(--w-brown-soft)",
                         fontWeight: 400,
                         marginInlineEnd: 4,
+                        fontSize: 15,
                       }}
                     />
+                    {entry.role && entry.name && <br />}
                     <Editable
                       value={entry.name}
                       onChange={(v) => updateEntry(entry.id, { name: v })}
                       enabled={editing}
                       style={{
-                        color: "var(--gold-200)",
+                        color: "var(--w-ink)",
                         fontWeight: 700,
+                        fontSize: 20,
                       }}
                     />
                   </div>
@@ -596,21 +636,39 @@ export default function Timeline({ lang, t, onClose }: Props) {
                   {editing && (
                     <button
                       type="button"
-                      className="icon-btn"
                       onClick={() => removeEntry(entry.id)}
                       style={{
                         position: "absolute",
                         top: "50%",
                         transform: "translateY(-50%)",
                         insetInlineStart: -8,
-                        width: 28,
-                        height: 28,
-                        color: "var(--danger)",
+                        width: 26,
+                        height: 26,
+                        borderRadius: 999,
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--w-brown-soft)",
+                        cursor: "pointer",
+                        opacity: 0.45,
+                        transition:
+                          "opacity var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = "1";
+                        e.currentTarget.style.background =
+                          "rgba(216,146,116,0.14)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = "0.45";
+                        e.currentTarget.style.background = "transparent";
                       }}
                       aria-label={t.delete}
                       title={t.delete}
                     >
-                      <IconClose size={12} />
+                      <IconClose size={11} />
                     </button>
                   )}
                 </div>
@@ -618,32 +676,48 @@ export default function Timeline({ lang, t, onClose }: Props) {
             })}
 
             {editing && (
-              <div className="text-center" style={{ marginTop: 12 }}>
+              <div className="text-center" style={{ marginTop: 8 }}>
                 <button
                   type="button"
                   onClick={addEntry}
-                  className="btn-base btn-ghost"
                   style={{
+                    background: "transparent",
+                    border: "0.6px dashed var(--w-peach-deep)",
+                    color: "var(--w-brown)",
+                    fontFamily: "var(--w-label-en)",
+                    fontSize: 9.5,
+                    letterSpacing: "0.28em",
+                    textTransform: "uppercase",
                     padding: "6px 18px",
-                    fontSize: 10,
-                    borderStyle: "dashed",
-                    borderColor: "rgba(212,175,55,0.45)",
-                    color: "var(--gold-300)",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    opacity: 0.85,
+                    transition:
+                      "opacity var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = "1";
+                    e.currentTarget.style.background =
+                      "rgba(233,184,154,0.18)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = "0.85";
+                    e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  {t.timelineAdd}
+                  + إضافة موعد
                 </button>
               </div>
             )}
           </div>
 
-          {/* Second ornament */}
-          <div className="flex justify-center" style={{ margin: "10px 0" }}>
+          {/* Second ornament before footer */}
+          <div className="flex justify-center" style={{ margin: "4px 0" }}>
             <OrnamentDivider />
           </div>
 
           {/* Rings */}
-          <div className="flex justify-center" style={{ margin: "10px 0 16px" }}>
+          <div className="flex justify-center" style={{ margin: "10px 0 14px" }}>
             <Rings />
           </div>
 
@@ -651,10 +725,10 @@ export default function Timeline({ lang, t, onClose }: Props) {
           <div
             className="text-center"
             style={{
-              fontFamily: "'Tajawal', 'Markazi Text', serif",
-              fontSize: 16,
+              fontFamily: "var(--w-serif-ar)",
+              fontSize: 15,
               lineHeight: 1.95,
-              color: "var(--text-dim)",
+              color: "var(--w-brown)",
               padding: "0 22px",
             }}
           >
@@ -670,21 +744,21 @@ export default function Timeline({ lang, t, onClose }: Props) {
           <div
             className="text-center"
             style={{
-              marginTop: 24,
-              fontFamily: "Inter, sans-serif",
-              fontSize: 10,
-              color: "var(--text-muted)",
-              letterSpacing: "0.4em",
+              marginTop: 22,
+              fontFamily: "var(--w-label-en)",
+              fontSize: 9.5,
+              color: "var(--w-brown-soft)",
+              letterSpacing: "0.42em",
               textTransform: "uppercase",
             }}
           >
-            {t.timelineSignedBy}
+            عـــــروســـــكــــم
             <div
               style={{
-                fontFamily: "'Tajawal', 'Markazi Text', serif",
+                fontFamily: "var(--w-serif-ar)",
                 fontWeight: 700,
                 fontSize: 24,
-                color: "var(--gold-300)",
+                color: "var(--w-peach-deep)",
                 letterSpacing: "0.04em",
                 display: "block",
                 marginTop: 6,
@@ -699,9 +773,9 @@ export default function Timeline({ lang, t, onClose }: Props) {
             </div>
             <div
               style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: 12,
-                color: "var(--text-muted)",
+                fontFamily: "var(--w-display-en)",
+                fontSize: 11,
+                color: "var(--w-brown-soft)",
                 letterSpacing: "0.22em",
                 marginTop: 8,
                 textTransform: "none",
@@ -717,9 +791,10 @@ export default function Timeline({ lang, t, onClose }: Props) {
               className="text-center"
               style={{
                 marginTop: 18,
-                fontFamily: "'Tajawal', 'Markazi Text', serif",
+                fontFamily: "var(--w-body-ar)",
                 fontSize: 12,
-                color: "var(--text-faint)",
+                color: "var(--w-brown-soft)",
+                opacity: 0.8,
               }}
             >
               {t.timelineHint}
