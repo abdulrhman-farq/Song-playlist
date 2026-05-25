@@ -125,6 +125,11 @@ export const strings = {
       "Tap any text to edit · capture a screenshot to share",
     timelineReset: "Reset to default",
     timelineResetConfirm: "Reset the timeline to the default schedule?",
+    timelineExport: "Save as image",
+    timelineExporting: "Preparing image…",
+    timelineExportSaved: "Saved",
+    timelineExportFailed: "Couldn't save image",
+    timelineShare: "Share",
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -247,6 +252,11 @@ export const strings = {
     timelineHint: "اضغط على أي نص لتعديله · التقط لقطة شاشة للمشاركة",
     timelineReset: "إعادة للوضع الافتراضي",
     timelineResetConfirm: "إعادة الجدول إلى الإعدادات الافتراضية؟",
+    timelineExport: "حفظ كصورة",
+    timelineExporting: "جاري التجهيز…",
+    timelineExportSaved: "تم الحفظ",
+    timelineExportFailed: "تعذّر حفظ الصورة",
+    timelineShare: "مشاركة",
   },
 } satisfies Record<Language, Record<string, unknown>>;
 

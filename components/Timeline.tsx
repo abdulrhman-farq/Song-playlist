@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { IconCheck, IconClose, IconEdit, IconPlus, IconTrash } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import {
+  IconCheck,
+  IconClose,
+  IconEdit,
+  IconExport,
+  IconPlus,
+  IconTrash,
+} from "@/components/icons";
 import {
   defaultTimeline,
   loadTimeline,
@@ -142,6 +149,9 @@ function Editable({
 export default function Timeline({ lang, t, onClose }: Props) {
   const [doc, setDoc] = useState<TimelineDoc>(() => defaultTimeline());
   const [editing, setEditing] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const saved = loadTimeline();
@@ -177,6 +187,82 @@ export default function Timeline({ lang, t, onClose }: Props) {
     setDoc(defaultTimeline());
   }
 
+  /**
+   * Capture the timeline card as a PNG sized for mobile share /
+   * status. On phones with Web Share API and file-share capability
+   * push straight to the share sheet; otherwise download.
+   */
+  async function exportAsImage() {
+    if (!cardRef.current) return;
+    const wasEditing = editing;
+    setEditing(false);
+    setExporting(true);
+    setExportStatus(t.timelineExporting);
+    // Give React + browser two frames to settle so the toolbar and
+    // dashed edit underlines aren't part of the capture.
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    try {
+      const { toPng } = await import("html-to-image");
+      const node = cardRef.current;
+      const rect = node.getBoundingClientRect();
+      // Target 1080px-wide output (2× a 540px card → retina-crisp on phones,
+      // perfect for WhatsApp / Stories / Reels).
+      const targetWidth = 1080;
+      const pixelRatio = Math.max(2, targetWidth / Math.max(1, rect.width));
+      const dataUrl = await toPng(node, {
+        pixelRatio,
+        backgroundColor: "#0a0a0a",
+        cacheBust: true,
+        skipFonts: false,
+      });
+      const filename = `wedding-timeline-29-05-2026.png`;
+
+      // Try Web Share API first (native share sheet on phones)
+      let shared = false;
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: "image/png" });
+        const nav = navigator as Navigator & {
+          canShare?: (data: ShareData) => boolean;
+        };
+        if (
+          typeof nav.canShare === "function" &&
+          nav.canShare({ files: [file] })
+        ) {
+          await nav.share({
+            files: [file],
+            title: "Wedding Day Timeline",
+            text: "رويـدا و عبدالرحمن · 29 · 05 · 2026",
+          });
+          shared = true;
+        }
+      } catch {
+        /* fall through to download */
+      }
+
+      if (!shared) {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      setExportStatus(t.timelineExportSaved);
+      window.setTimeout(() => setExportStatus(null), 2000);
+    } catch (err) {
+      console.error("Timeline export failed:", err);
+      setExportStatus(t.timelineExportFailed);
+      window.setTimeout(() => setExportStatus(null), 2400);
+    } finally {
+      setExporting(false);
+      if (wasEditing) setEditing(true);
+    }
+  }
+
   return (
     <div
       className="modal-overlay"
@@ -187,19 +273,20 @@ export default function Timeline({ lang, t, onClose }: Props) {
       dir="rtl"
     >
       <div
+        ref={cardRef}
         className="contain-paint relative gpu"
         style={{
           width: "min(560px, 100%)",
-          maxHeight: "92vh",
-          overflow: "auto",
+          maxHeight: exporting ? "none" : "92vh",
+          overflow: exporting ? "visible" : "auto",
           borderRadius: 22,
           background:
             "radial-gradient(ellipse at 0% 0%, rgba(212,175,55,0.18), transparent 55%)," +
             " radial-gradient(ellipse at 100% 100%, rgba(34,197,94,0.08), transparent 60%)," +
             " linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-panel) 100%)",
           border: "1px solid var(--line-soft)",
-          boxShadow: "var(--shadow-xl)",
-          animation: "modal-in 0.4s var(--ease-spring)",
+          boxShadow: exporting ? "none" : "var(--shadow-xl)",
+          animation: exporting ? "none" : "modal-in 0.4s var(--ease-spring)",
         }}
       >
         {/* Inner hairline frame */}
@@ -214,17 +301,17 @@ export default function Timeline({ lang, t, onClose }: Props) {
           }}
         />
 
-        {/* Toolbar */}
+        {/* Toolbar — excluded from the export capture via display:none */}
         <div
           className="sticky top-0 z-20"
           style={{
+            display: exporting ? "none" : "flex",
             background:
               "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(18,18,18,0.7) 100%)",
             backdropFilter: "blur(14px)",
             WebkitBackdropFilter: "blur(14px)",
             borderBottom: "1px solid var(--line-subtle)",
             padding: "12px 20px",
-            display: "flex",
             alignItems: "center",
             gap: 8,
             flexWrap: "wrap",
@@ -237,6 +324,7 @@ export default function Timeline({ lang, t, onClose }: Props) {
               className="btn-base btn-ghost"
               onClick={() => setEditing((v) => !v)}
               style={{ padding: "7px 14px", fontSize: 11 }}
+              disabled={exporting}
             >
               <IconEdit size={12} />
               <span>{editing ? t.timelineDone : t.timelineEdit}</span>
@@ -252,6 +340,23 @@ export default function Timeline({ lang, t, onClose }: Props) {
                 <span>{t.timelineAdd}</span>
               </button>
             )}
+            <button
+              type="button"
+              className="btn-base btn-gold"
+              onClick={exportAsImage}
+              disabled={exporting}
+              style={{ padding: "7px 14px", fontSize: 11 }}
+              title={t.timelineExport}
+            >
+              {exporting ? (
+                <span className="spinner" />
+              ) : (
+                <IconExport size={12} />
+              )}
+              <span>
+                {exportStatus ?? t.timelineExport}
+              </span>
+            </button>
             {editing && (
               <button
                 type="button"
@@ -275,6 +380,7 @@ export default function Timeline({ lang, t, onClose }: Props) {
             onClick={onClose}
             title={t.cancel}
             aria-label={t.cancel}
+            disabled={exporting}
           >
             <IconClose size={16} />
           </button>
