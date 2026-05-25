@@ -1,4 +1,4 @@
-import type { Language, PersistedSettings, Track } from "@/types";
+import type { Language, PersistedSettings, PlaylistSection, Track } from "@/types";
 
 const META_KEY = "wedding-playlist:v1";
 const LANG_KEY = "wp:lang";

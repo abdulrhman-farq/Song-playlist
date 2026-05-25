@@ -33,9 +33,22 @@ export interface YouTubeTrack extends BaseTrack {
 
 export type Track = UploadTrack | YouTubeTrack;
 
+/**
+ * A named grouping of tracks (e.g. "Cocktail", "Entrance"). Tracks
+ * reference their section via `Track.sectionId`. Order in the
+ * `sections` array determines display order; sectionless tracks
+ * render in an implicit "Unassigned" group at the top.
+ */
+export interface PlaylistSection {
+  id: string;
+  /** Display label. Authors can include both languages, eg. "Cocktail · ساعة الكوكتيل". */
+  label: string;
+}
+
 export interface PersistedSettings {
   name: string;
   tracks: Track[];
+  sections?: PlaylistSection[];
   volume: number;
   autoplay: boolean;
   shuffle: boolean;

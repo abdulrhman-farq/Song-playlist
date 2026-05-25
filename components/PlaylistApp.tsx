@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AddPanel from "@/components/AddPanel";
 import Header from "@/components/Header";
 import PlayerBar from "@/components/Player";
+import SectionGroup from "@/components/SectionGroup";
 import TrackItem, { type DropPos } from "@/components/TrackItem";
 import Toast from "@/components/Toast";
 import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
 import { dir as dirOf, strings } from "@/lib/i18n";
 import { createSamples } from "@/lib/samples";
+import { createDefaultSections } from "@/lib/sections";
 import {
   clearBlobs,
   deleteBlob,
@@ -33,6 +35,7 @@ import type {
   ExportedPlaylist,
   ExportedTrackYouTube,
   Language,
+  PlaylistSection,
   Track,
   UploadTrack,
   YouTubeTrack,
@@ -48,7 +51,33 @@ export default function PlaylistApp() {
   // Playlist
   const [playlistName, setPlaylistName] = useState<string>(strings.en.untitled);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [sections, setSections] = useState<PlaylistSection[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
+
+  /**
+   * The track list ordered by section: for each section (in section
+   * order), append tracks belonging to it (preserving their relative
+   * order in `tracks`). Unassigned tracks come last. This is what
+   * next/prev navigation walks.
+   */
+  const orderedTracks = useMemo<Track[]>(() => {
+    const bySection: Record<string, Track[]> = {};
+    const unassigned: Track[] = [];
+    for (const tr of tracks) {
+      const sid = tr.sectionId;
+      if (sid && sections.some((s) => s.id === sid)) {
+        (bySection[sid] ??= []).push(tr);
+      } else {
+        unassigned.push(tr);
+      }
+    }
+    const out: Track[] = [];
+    for (const sec of sections) {
+      if (bySection[sec.id]) out.push(...bySection[sec.id]);
+    }
+    out.push(...unassigned);
+    return out;
+  }, [tracks, sections]);
 
   // Transport state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -101,12 +130,18 @@ export default function PlaylistApp() {
     if (saved) {
       setPlaylistName(saved.name || strings[savedLang].untitled);
       setTracks(Array.isArray(saved.tracks) ? saved.tracks : []);
+      if (Array.isArray(saved.sections) && saved.sections.length > 0) {
+        setSections(saved.sections);
+      } else {
+        setSections(createDefaultSections(strings[savedLang]));
+      }
       if (typeof saved.volume === "number") setVolume(saved.volume);
       if (typeof saved.autoplay === "boolean") setAutoplay(saved.autoplay);
       if (typeof saved.shuffle === "boolean") setShuffle(saved.shuffle);
       if (typeof saved.repeat === "boolean") setRepeat(saved.repeat);
     } else {
       setPlaylistName(strings[savedLang].untitled);
+      setSections(createDefaultSections(strings[savedLang]));
     }
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,12 +161,13 @@ export default function PlaylistApp() {
     saveMeta({
       name: playlistName,
       tracks: sanitizeTracksForSave(tracks),
+      sections,
       volume,
       autoplay,
       shuffle,
       repeat,
     });
-  }, [loaded, playlistName, tracks, volume, autoplay, shuffle, repeat]);
+  }, [loaded, playlistName, tracks, sections, volume, autoplay, shuffle, repeat]);
 
   /* ── Toast helper ──────────────────────────────────────── */
   const toastTimer = useRef<number | null>(null);
@@ -301,6 +337,60 @@ export default function PlaylistApp() {
     setTracks((prev) => prev.map((x) => (x.id === id ? { ...x, title } : x)));
   }, []);
 
+  /* ── Section ops ───────────────────────────────────────── */
+  const handleAddSection = useCallback(() => {
+    const label = prompt(t.addSection + " — " + t.renameSection);
+    if (!label) return;
+    setSections((prev) => [...prev, { id: uid(), label: label.trim() }]);
+  }, [t.addSection, t.renameSection]);
+
+  const handleRenameSection = useCallback(
+    (id: string) => {
+      const current = sections.find((s) => s.id === id);
+      if (!current) return;
+      const label = prompt(t.renameSection, current.label);
+      if (label == null) return;
+      const trimmed = label.trim();
+      if (!trimmed) return;
+      setSections((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, label: trimmed } : s)),
+      );
+    },
+    [sections, t.renameSection],
+  );
+
+  const handleDeleteSection = useCallback((id: string) => {
+    setSections((prev) => prev.filter((s) => s.id !== id));
+    setTracks((prev) =>
+      prev.map((tr) => (tr.sectionId === id ? { ...tr, sectionId: undefined } : tr)),
+    );
+  }, []);
+
+  const handleMoveSection = useCallback((id: string, direction: -1 | 1) => {
+    setSections((prev) => {
+      const idx = prev.findIndex((s) => s.id === id);
+      if (idx < 0) return prev;
+      const target = idx + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = prev.slice();
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  }, []);
+
+  const handleAssignSection = useCallback(
+    (trackId: string, sectionId: string | null) => {
+      setTracks((prev) =>
+        prev.map((tr) =>
+          tr.id === trackId
+            ? { ...tr, sectionId: sectionId ?? undefined }
+            : tr,
+        ),
+      );
+    },
+    [],
+  );
+
   const handleSaveTrim = useCallback(
     (id: string, startAt: number | null, endAt: number | null) => {
       setTracks((prev) =>
@@ -325,16 +415,42 @@ export default function PlaylistApp() {
 
   function moveTrack(fromId: string, toId: string, pos: DropPos) {
     setTracks((prev) => {
-      const from = prev.findIndex((x) => x.id === fromId);
-      const to = prev.findIndex((x) => x.id === toId);
-      if (from < 0 || to < 0 || from === to) return prev;
-      const next = prev.slice();
-      const [moved] = next.splice(from, 1);
-      let insertAt = next.findIndex((x) => x.id === toId);
-      if (insertAt < 0) insertAt = next.length;
+      const target = prev.find((x) => x.id === toId);
+      if (!target) return prev;
+      // Adopt the target's section so cross-section drops "stick".
+      const updated = prev.map((x) =>
+        x.id === fromId ? { ...x, sectionId: target.sectionId } : x,
+      );
+      const from = updated.findIndex((x) => x.id === fromId);
+      if (from < 0) return prev;
+      const [moved] = updated.splice(from, 1);
+      let insertAt = updated.findIndex((x) => x.id === toId);
+      if (insertAt < 0) insertAt = updated.length;
       if (pos === "below") insertAt += 1;
-      next.splice(insertAt, 0, moved);
-      return next;
+      updated.splice(insertAt, 0, moved);
+      return updated;
+    });
+  }
+
+  /** Drop a track onto a section header (or into an empty section). */
+  function dropOnSection(fromId: string, sectionId: string | null) {
+    setTracks((prev) => {
+      if (!prev.some((x) => x.id === fromId)) return prev;
+      const updated = prev.map((x) =>
+        x.id === fromId ? { ...x, sectionId: sectionId ?? undefined } : x,
+      );
+      const fromIdx = updated.findIndex((x) => x.id === fromId);
+      const [moved] = updated.splice(fromIdx, 1);
+      // Place after the last track currently in that section, or at end.
+      let insertAt = updated.length;
+      for (let i = updated.length - 1; i >= 0; i--) {
+        if ((updated[i].sectionId ?? null) === sectionId) {
+          insertAt = i + 1;
+          break;
+        }
+      }
+      updated.splice(insertAt, 0, moved);
+      return updated;
     });
   }
 
@@ -655,35 +771,35 @@ export default function PlaylistApp() {
     }
   }, [currentId, tracks]);
 
-  function nextIndex(currIdx: number, direction: 1 | -1): number {
-    if (tracks.length === 0) return -1;
+  function nextIndex(list: Track[], currIdx: number, direction: 1 | -1): number {
+    if (list.length === 0) return -1;
     if (shuffle && direction > 0) {
-      if (tracks.length === 1) return 0;
+      if (list.length === 1) return 0;
       let n: number;
       do {
-        n = Math.floor(Math.random() * tracks.length);
+        n = Math.floor(Math.random() * list.length);
       } while (n === currIdx);
       return n;
     }
     let n = currIdx + direction;
-    if (n < 0) n = tracks.length - 1;
-    if (n >= tracks.length) n = 0;
+    if (n < 0) n = list.length - 1;
+    if (n >= list.length) n = 0;
     return n;
   }
 
   const handleNext = useCallback(() => {
-    const i = tracks.findIndex((x) => x.id === currentId);
-    const n = nextIndex(i, 1);
-    if (n >= 0) setCurrentId(tracks[n].id);
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    const n = nextIndex(orderedTracks, i, 1);
+    if (n >= 0) setCurrentId(orderedTracks[n].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, tracks, shuffle]);
+  }, [currentId, orderedTracks, shuffle]);
 
   const handlePrev = useCallback(() => {
-    const i = tracks.findIndex((x) => x.id === currentId);
-    const n = nextIndex(i, -1);
-    if (n >= 0) setCurrentId(tracks[n].id);
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    const n = nextIndex(orderedTracks, i, -1);
+    if (n >= 0) setCurrentId(orderedTracks[n].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, tracks, shuffle]);
+  }, [currentId, orderedTracks, shuffle]);
 
   const handleTrackEnded = useCallback(() => {
     if (repeat) {
@@ -741,6 +857,10 @@ export default function PlaylistApp() {
   /* ── Drag-and-drop ─────────────────────────────────────── */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState<DropPos>(null);
+  /** Section the dragged track is hovering over (`null` = Unassigned). */
+  const [dragOverSection, setDragOverSection] = useState<
+    string | null | "none"
+  >("none");
   const dragIdRef = useRef<string | null>(null);
 
   function onDragStart(e: React.DragEvent, id: string) {
@@ -774,7 +894,43 @@ export default function PlaylistApp() {
     dragIdRef.current = null;
     setDragOverId(null);
     setDropPos(null);
+    setDragOverSection("none");
   }
+
+  function onSectionDragOver(e: React.DragEvent, sectionId: string | null) {
+    if (!dragIdRef.current) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverSection(sectionId);
+  }
+  function onSectionDrop(e: React.DragEvent, sectionId: string | null) {
+    e.preventDefault();
+    const fromId = dragIdRef.current;
+    if (!fromId) return;
+    // If the actual drop target is a TrackItem inside, onDrop already
+    // handled it; only act when this fires without a track drop.
+    if (!dragOverId) {
+      dropOnSection(fromId, sectionId);
+    }
+    dragIdRef.current = null;
+    setDragOverSection("none");
+    setDragOverId(null);
+    setDropPos(null);
+  }
+
+  /* Tracks grouped by section, in section order. */
+  const tracksBySection = useMemo<Record<string, Track[]>>(() => {
+    const groups: Record<string, Track[]> = {};
+    for (const sec of sections) groups[sec.id] = [];
+    const unassigned: Track[] = [];
+    for (const tr of tracks) {
+      const sid = tr.sectionId;
+      if (sid && groups[sid]) groups[sid].push(tr);
+      else unassigned.push(tr);
+    }
+    groups["__unassigned__"] = unassigned;
+    return groups;
+  }, [tracks, sections]);
 
   /* ── Keyboard shortcut: space toggles play ──────────────── */
   useEffect(() => {
@@ -856,20 +1012,36 @@ export default function PlaylistApp() {
 
                 <div className="col-span-12 lg:col-span-8">
                   <div className="stage-card p-6">
-                    <div className="flex items-baseline justify-between mb-4 px-1">
+                    <div className="flex items-baseline justify-between mb-4 px-1 gap-2 flex-wrap">
                       <div className="label-tracked">
                         {tracks.length}{" "}
                         {tracks.length === 1 ? t.track : t.tracks}
                       </div>
-                      <div className="label-tracked">
-                        {t.total} ·{" "}
-                        <span className="tnum" style={{ color: "#3A2C20" }}>
-                          {fmtTime(totalSeconds)}
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          className="text-[10px]"
+                          onClick={handleAddSection}
+                          style={{
+                            fontFamily: "'Cinzel', serif",
+                            letterSpacing: "0.22em",
+                            textTransform: "uppercase",
+                            color: "#D89274",
+                          }}
+                          title={t.addSection}
+                        >
+                          + {t.addSection}
+                        </button>
+                        <div className="label-tracked">
+                          {t.total} ·{" "}
+                          <span className="tnum" style={{ color: "#3A2C20" }}>
+                            {fmtTime(totalSeconds)}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {tracks.length === 0 ? (
+                    {tracks.length === 0 && sections.length === 0 ? (
                       <div className="text-center py-16 px-6">
                         <div
                           className="inline-flex items-center justify-center rounded-full mb-4"
@@ -900,31 +1072,93 @@ export default function PlaylistApp() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2">
-                        {tracks.map((tr, i) => (
-                          <TrackItem
-                            key={tr.id}
-                            track={tr}
-                            idx={i}
-                            isCurrent={tr.id === currentId}
-                            isPlaying={tr.id === currentId && isPlaying}
-                            t={t}
-                            validation={
-                              tr.source === "youtube"
-                                ? validation[tr.youtubeId] ?? null
-                                : null
-                            }
-                            onPlay={handlePlay}
-                            onDelete={handleDelete}
-                            onRename={handleRename}
-                            onEditTrim={(id) => setTrimEditId(id)}
-                            onDragStart={onDragStart}
-                            onDragOver={onDragOver}
-                            onDragLeave={onDragLeave}
-                            onDrop={onDrop}
-                            dropPos={dragOverId === tr.id ? dropPos : null}
-                          />
-                        ))}
+                      <div className="flex flex-col gap-4">
+                        {sections.map((sec, sIdx) => {
+                          const secTracks = tracksBySection[sec.id] ?? [];
+                          return (
+                            <SectionGroup
+                              key={sec.id}
+                              section={sec}
+                              isFirst={sIdx === 0}
+                              isLast={sIdx === sections.length - 1}
+                              tracks={secTracks}
+                              t={t}
+                              onMoveSection={handleMoveSection}
+                              onRenameSection={handleRenameSection}
+                              onDeleteSection={handleDeleteSection}
+                              onSectionDragOver={onSectionDragOver}
+                              onSectionDrop={onSectionDrop}
+                              isDropTarget={dragOverSection === sec.id}
+                            >
+                              {secTracks.map((tr, i) => (
+                                <TrackItem
+                                  key={tr.id}
+                                  track={tr}
+                                  idx={i}
+                                  isCurrent={tr.id === currentId}
+                                  isPlaying={tr.id === currentId && isPlaying}
+                                  t={t}
+                                  validation={
+                                    tr.source === "youtube"
+                                      ? validation[tr.youtubeId] ?? null
+                                      : null
+                                  }
+                                  onPlay={handlePlay}
+                                  onDelete={handleDelete}
+                                  onRename={handleRename}
+                                  onEditTrim={(id) => setTrimEditId(id)}
+                                  onDragStart={onDragStart}
+                                  onDragOver={onDragOver}
+                                  onDragLeave={onDragLeave}
+                                  onDrop={onDrop}
+                                  dropPos={dragOverId === tr.id ? dropPos : null}
+                                />
+                              ))}
+                            </SectionGroup>
+                          );
+                        })}
+
+                        {tracksBySection["__unassigned__"] &&
+                          tracksBySection["__unassigned__"].length > 0 && (
+                            <SectionGroup
+                              section={null}
+                              isFirst={false}
+                              isLast
+                              tracks={tracksBySection["__unassigned__"]}
+                              t={t}
+                              onMoveSection={handleMoveSection}
+                              onRenameSection={handleRenameSection}
+                              onDeleteSection={handleDeleteSection}
+                              onSectionDragOver={onSectionDragOver}
+                              onSectionDrop={onSectionDrop}
+                              isDropTarget={dragOverSection === null}
+                            >
+                              {tracksBySection["__unassigned__"].map((tr, i) => (
+                                <TrackItem
+                                  key={tr.id}
+                                  track={tr}
+                                  idx={i}
+                                  isCurrent={tr.id === currentId}
+                                  isPlaying={tr.id === currentId && isPlaying}
+                                  t={t}
+                                  validation={
+                                    tr.source === "youtube"
+                                      ? validation[tr.youtubeId] ?? null
+                                      : null
+                                  }
+                                  onPlay={handlePlay}
+                                  onDelete={handleDelete}
+                                  onRename={handleRename}
+                                  onEditTrim={(id) => setTrimEditId(id)}
+                                  onDragStart={onDragStart}
+                                  onDragOver={onDragOver}
+                                  onDragLeave={onDragLeave}
+                                  onDrop={onDrop}
+                                  dropPos={dragOverId === tr.id ? dropPos : null}
+                                />
+                              ))}
+                            </SectionGroup>
+                          )}
                       </div>
                     )}
                   </div>

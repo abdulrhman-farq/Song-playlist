@@ -177,6 +177,16 @@ export const IconFolder = (p: IconProps) => (
     <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
   </Svg>
 );
+export const IconArrowUp = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="6 14 12 8 18 14" />
+  </Svg>
+);
+export const IconArrowDown = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="6 10 12 16 18 10" />
+  </Svg>
+);
 
 /** Small ornamental petal/diamond used in divider-orn and the header. */
 export const OrnamentMark = ({ size = 10, color = "#D89274" }: { size?: number; color?: string }) => (
