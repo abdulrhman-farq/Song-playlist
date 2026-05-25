@@ -9,6 +9,7 @@ import UploadPanel from "@/components/UploadPanel";
 import YouTubeAddPanel from "@/components/YouTubeAddPanel";
 import EmptyState from "@/components/EmptyState";
 import BottomPlayer from "@/components/BottomPlayer";
+import Timeline from "@/components/Timeline";
 import Toast from "@/components/Toast";
 import type { DropPos } from "@/components/TrackRow";
 import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
@@ -110,6 +111,8 @@ export default function PlaylistApp() {
 
   // Trim editor
   const [trimEditId, setTrimEditId] = useState<string | null>(null);
+  // Timeline overlay
+  const [timelineOpen, setTimelineOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1022,6 +1025,7 @@ export default function PlaylistApp() {
           onClearAll={handleClearAll}
           onAddSection={handleAddSection}
           onScrollToSection={scrollToSection}
+          onOpenTimeline={() => setTimelineOpen(true)}
         />
       }
       bottomPlayer={
@@ -1150,6 +1154,14 @@ export default function PlaylistApp() {
         t={t}
         lang={lang}
       />
+
+      {timelineOpen && (
+        <Timeline
+          lang={lang}
+          t={t}
+          onClose={() => setTimelineOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }

@@ -79,3 +79,26 @@ export interface ExportedPlaylist {
 }
 
 export type Language = "ar" | "en";
+
+/**
+ * Wedding-day timeline entry. The order in the persisted `entries`
+ * array drives display order; we don't sort by time so a user can
+ * intentionally reorder.
+ */
+export interface TimelineEntry {
+  id: string;
+  /** Free-form time string (e.g. "1:00 PM"). */
+  time: string;
+  /** Role / activity (e.g. "الهيرستايلست", "Hairstylist"). */
+  role: string;
+  /** Person or venue (e.g. "لينا فهد"). */
+  name: string;
+}
+
+export interface TimelineDoc {
+  entries: TimelineEntry[];
+  /** Closing message above the signature. */
+  footerMessage: string;
+  /** Signature display name (default: "رويـدا"). */
+  signatureName: string;
+}

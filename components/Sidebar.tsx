@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   IconArrowDown,
   IconArrowUp,
+  IconClock,
   IconClose,
   IconExport,
   IconGlobe,
@@ -40,6 +41,7 @@ interface Props {
   onClearAll: () => void;
   onAddSection: () => void;
   onScrollToSection: (sectionId: string) => void;
+  onOpenTimeline: () => void;
 }
 
 export default function Sidebar({
@@ -59,6 +61,7 @@ export default function Sidebar({
   onClearAll,
   onAddSection,
   onScrollToSection,
+  onOpenTimeline,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -112,6 +115,20 @@ export default function Sidebar({
           <IconLibrary size={18} />
           <span>Your playlist</span>
         </a>
+        <button
+          type="button"
+          className="nav-row"
+          onClick={actAndClose(onOpenTimeline)}
+        >
+          <IconClock size={18} />
+          <span>{t.timeline}</span>
+          <span
+            className="ms-auto label-micro"
+            style={{ color: "var(--gold-400)" }}
+          >
+            R · A
+          </span>
+        </button>
       </nav>
 
       {/* Sections jump-list */}

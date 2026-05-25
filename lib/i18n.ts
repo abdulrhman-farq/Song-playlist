@@ -106,6 +106,22 @@ export const strings = {
     afterWedding: "since the night",
     inTheAir: "Cue the music for the night",
     inMoments: "in a few moments",
+    // Timeline
+    timeline: "Timeline",
+    timelineTitle: "Wedding Day Timeline",
+    timelineSubtitle: "29 · 05 · 2026 · The day's schedule",
+    timelineEdit: "Edit mode",
+    timelineDone: "Done editing",
+    timelineAdd: "+ Add moment",
+    timelineDescription: "Description",
+    timelineName: "Name",
+    timelineFooterDefault:
+      "So glad you'll share these moments with me,\nlonging for your beautiful presence",
+    timelineSignedBy: "Your bride",
+    timelineHint:
+      "Tap any text to edit · capture a screenshot to share",
+    timelineReset: "Reset to default",
+    timelineResetConfirm: "Reset the timeline to the default schedule?",
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -210,6 +226,21 @@ export const strings = {
     afterWedding: "منذ الليلة",
     inTheAir: "نغمات السهرة",
     inMoments: "بعد لحظات",
+    // Timeline
+    timeline: "الجدول",
+    timelineTitle: "جدول يوم العرس",
+    timelineSubtitle: "٢٩ · ٠٥ · ٢٠٢٦ · مواعيد اليوم",
+    timelineEdit: "وضع التعديل",
+    timelineDone: "إنهاء التعديل",
+    timelineAdd: "+ إضافة موعد",
+    timelineDescription: "الوصف",
+    timelineName: "الاسم",
+    timelineFooterDefault:
+      "سعيدة بوجودكم معي في هذه اللحظات السعيدة،\nمتشوّقة لجميل حضوركم",
+    timelineSignedBy: "عـــــروســـــكــــم",
+    timelineHint: "اضغط على أي نص لتعديله · التقط لقطة شاشة للمشاركة",
+    timelineReset: "إعادة للوضع الافتراضي",
+    timelineResetConfirm: "إعادة الجدول إلى الإعدادات الافتراضية؟",
   },
 } satisfies Record<Language, Record<string, unknown>>;
 
