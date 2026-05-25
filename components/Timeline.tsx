@@ -201,6 +201,26 @@ export default function Timeline({ lang, t, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, exporting]);
 
+  /** Lock background page scroll while the Timeline modal is open so
+   *  touch drags scroll the timeline card itself (not the playlist
+   *  behind it). Restores the prior value on unmount.
+   */
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevBody = body.style.overflow;
+    const prevHtml = html.style.overflow;
+    const prevTouch = body.style.touchAction;
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    body.style.touchAction = "none";
+    return () => {
+      body.style.overflow = prevBody;
+      html.style.overflow = prevHtml;
+      body.style.touchAction = prevTouch;
+    };
+  }, []);
+
   function updateEntry(id: string, patch: Partial<TimelineEntry>) {
     setDoc((d) => ({
       ...d,
@@ -315,6 +335,9 @@ export default function Timeline({ lang, t, onClose }: Props) {
           display: "flex",
           flexDirection: "column",
           gap: 14,
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
         }}
       >
         {/* Toolbar — sits OUTSIDE the captured card */}
