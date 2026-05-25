@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { IconCheck, IconClose, IconYT } from "@/components/icons";
+import { IconCheck, IconClose, IconShield, IconYT } from "@/components/icons";
 import type { Strings } from "@/lib/i18n";
 import type { EmbedCheckResult } from "@/lib/ytApi";
 import type { Language, YouTubeTrack } from "@/types";
@@ -34,9 +34,9 @@ function statusLabel(r: EmbedCheckResult | undefined, t: Strings): string {
 }
 
 function statusColor(r: EmbedCheckResult | undefined): string {
-  if (!r) return "#A38A72";
-  if (r.kind === "ok") return "#5B8F5B";
-  return "#C97B5B";
+  if (!r) return "var(--text-faint)";
+  if (r.kind === "ok") return "#88e0a4";
+  return "#f3a08a";
 }
 
 export default function ValidationModal({
@@ -62,7 +62,8 @@ export default function ValidationModal({
 
   const pct =
     progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-  const allDone = !validating && progress.done === progress.total && progress.total > 0;
+  const allDone =
+    !validating && progress.done === progress.total && progress.total > 0;
   const broken = tracks.filter(
     (tr) => results[tr.youtubeId] && results[tr.youtubeId].kind !== "ok",
   ).length;
@@ -73,140 +74,124 @@ export default function ValidationModal({
       onClick={(e) => {
         if (e.target === e.currentTarget && !validating) onClose();
       }}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(58,44,32,0.45)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 200,
-        animation: "slideUp .18s ease",
-      }}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div
-        className="stage-card paper-bg"
-        style={{
-          width: "min(560px, 92vw)",
-          maxHeight: "82vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: 28,
-          position: "relative",
-          isolation: "isolate",
-        }}
-      >
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="label-tracked">{t.validateTitle}</div>
-            <button
-              type="button"
-              className="btn-iconic"
-              style={{ width: 32, height: 32 }}
-              onClick={onClose}
-              disabled={validating}
-              title={t.cancel}
-            >
-              <IconClose size={14} />
-            </button>
+      <div className="modal-card" style={{ padding: 24 }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span style={{ color: "var(--gold-400)" }}>
+              <IconShield size={16} />
+            </span>
+            <div className="label-micro">{t.validateTitle}</div>
           </div>
-
-          <div
-            className="font-italiana text-[26px] mb-1"
-            style={{ color: "#3A2C20" }}
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={onClose}
+            disabled={validating}
+            title={t.cancel}
           >
-            {validating
-              ? t.validating
-              : allDone
-                ? broken === 0
-                  ? t.allEmbedsOk
-                  : `${broken} ${broken === 1 ? t.brokenEmbed : t.brokenEmbeds}`
-                : t.validateTitle}
-          </div>
+            <IconClose size={14} />
+          </button>
+        </div>
 
-          {/* Progress bar */}
+        <div
+          className="font-display italic"
+          style={{ fontSize: 24, color: "var(--text)" }}
+        >
+          {validating
+            ? t.validating
+            : allDone
+              ? broken === 0
+                ? t.allEmbedsOk
+                : `${broken} ${broken === 1 ? t.brokenEmbed : t.brokenEmbeds}`
+              : t.validateTitle}
+        </div>
+
+        <div
+          style={{
+            height: 4,
+            background: "rgba(255,255,255,0.08)",
+            borderRadius: 999,
+            overflow: "hidden",
+            margin: "14px 0 14px",
+          }}
+        >
           <div
             style={{
-              height: 4,
-              background: "rgba(58,44,32,0.12)",
-              borderRadius: 999,
-              overflow: "hidden",
-              margin: "12px 0 18px",
+              height: "100%",
+              width: `${pct}%`,
+              background: "linear-gradient(90deg, var(--gold-400), var(--gold-300))",
+              transition: "width 0.2s var(--ease-out)",
             }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${pct}%`,
-                background: "linear-gradient(90deg, #E9B89A, #D89274)",
-                transition: "width .2s ease",
-              }}
-            />
-          </div>
+          />
+        </div>
 
-          <div className="text-xs text-brownSoft mb-3" style={{ letterSpacing: "0.04em" }}>
-            {progress.done} / {progress.total}
-          </div>
+        <div
+          className="text-[11px] mb-3"
+          style={{ color: "var(--text-muted)", letterSpacing: "0.06em" }}
+        >
+          {progress.done} / {progress.total}
+        </div>
 
-          <div
-            className="flex flex-col gap-2"
-            style={{ overflowY: "auto", maxHeight: "44vh", paddingRight: 4 }}
-          >
-            {tracks.map((tr) => {
-              const r = results[tr.youtubeId];
-              const isOk = r?.kind === "ok";
-              return (
+        <div
+          className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1"
+          style={{ maxHeight: "48vh" }}
+        >
+          {tracks.map((tr) => {
+            const r = results[tr.youtubeId];
+            const isOk = r?.kind === "ok";
+            return (
+              <div
+                key={tr.id}
+                className="flex items-center gap-3 px-3 py-2 rounded-md"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid var(--line-subtle)",
+                }}
+              >
+                <span style={{ color: "#f3a08a" }}>
+                  <IconYT size={14} />
+                </span>
                 <div
-                  key={tr.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded hairline"
-                  style={{ background: "rgba(250,245,236,0.7)" }}
+                  className="font-display italic text-[14px] flex-1 truncate"
+                  style={{ color: "var(--text)" }}
+                  title={tr.title}
                 >
-                  <span style={{ color: "#C97B5B" }}>
-                    <IconYT size={14} />
-                  </span>
-                  <div
-                    className="font-cormorant text-[16px] flex-1 truncate"
-                    title={tr.title}
-                  >
-                    {tr.title}
-                  </div>
-                  <div
-                    className="text-[10px] tnum"
-                    style={{
-                      color: statusColor(r),
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                      fontFamily: "'Cinzel', serif",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isOk ? (
-                      <span className="inline-flex items-center gap-1">
-                        <IconCheck size={12} />
-                        {t.validOk}
-                      </span>
-                    ) : (
-                      statusLabel(r, t)
-                    )}
-                  </div>
+                  {tr.title}
                 </div>
-              );
-            })}
-          </div>
+                <div
+                  className="text-[10px] tnum"
+                  style={{
+                    color: statusColor(r),
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {isOk ? (
+                    <span className="inline-flex items-center gap-1">
+                      <IconCheck size={11} />
+                      {t.validOk}
+                    </span>
+                  ) : (
+                    statusLabel(r, t)
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-          <div className="flex items-center justify-end mt-4">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={onClose}
-              disabled={validating}
-            >
-              {t.done}
-            </button>
-          </div>
+        <div className="flex items-center justify-end mt-4">
+          <button
+            type="button"
+            className="btn-base btn-gold"
+            onClick={onClose}
+            disabled={validating}
+          >
+            {t.done}
+          </button>
         </div>
       </div>
     </div>

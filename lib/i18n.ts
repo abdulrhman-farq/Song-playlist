@@ -28,6 +28,7 @@ export const strings = {
     ytPlaceholder: "https://www.youtube.com/watch?v=…",
     titleLabel: "Title (optional)",
     add: "Add",
+    youtubeFetching: "Fetching…",
     cancel: "Cancel",
     save: "Save",
     delete: "Delete",
@@ -54,6 +55,7 @@ export const strings = {
     previous: "Previous",
     mute: "Mute",
     unmute: "Unmute",
+    volume: "Volume",
     language: "Language",
     // Validation
     validate: "Test embeds",
@@ -124,6 +126,7 @@ export const strings = {
     ytPlaceholder: "https://www.youtube.com/watch?v=…",
     titleLabel: "العنوان (اختياري)",
     add: "إضافة",
+    youtubeFetching: "جاري الجلب…",
     cancel: "إلغاء",
     save: "حفظ",
     delete: "حذف",
@@ -149,6 +152,7 @@ export const strings = {
     previous: "السابق",
     mute: "كتم",
     unmute: "إلغاء الكتم",
+    volume: "الصوت",
     language: "اللغة",
     // Validation
     validate: "اختبار الروابط",

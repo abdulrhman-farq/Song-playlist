@@ -187,6 +187,39 @@ export const IconArrowDown = (p: IconProps) => (
     <polyline points="6 10 12 16 18 10" />
   </Svg>
 );
+export const IconHome = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" />
+  </Svg>
+);
+export const IconLibrary = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 4v16M9 4v16M14 5l5 14" />
+  </Svg>
+);
+export const IconMore = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="18" cy="12" r="1.4" fill="currentColor" />
+  </Svg>
+);
+export const IconSearch = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.3-4.3" />
+  </Svg>
+);
+export const IconHeart = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 21s-7-4.5-9.5-9C1 8.5 3 5 7 5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 4 0 6 3.5 4.5 7C19 16.5 12 21 12 21z" />
+  </Svg>
+);
+export const IconMenu = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Svg>
+);
 
 /** Small ornamental petal/diamond used in divider-orn and the header. */
 export const OrnamentMark = ({ size = 10, color = "#D89274" }: { size?: number; color?: string }) => (

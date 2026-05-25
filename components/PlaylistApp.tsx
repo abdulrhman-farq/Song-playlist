@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AddPanel from "@/components/AddPanel";
-import Header from "@/components/Header";
-import PlayerBar from "@/components/Player";
-import SectionGroup from "@/components/SectionGroup";
-import TrackItem, { type DropPos } from "@/components/TrackItem";
+import AppShell from "@/components/AppShell";
+import Sidebar from "@/components/Sidebar";
+import PlaylistHero from "@/components/PlaylistHero";
+import TrackList from "@/components/TrackList";
+import UploadPanel from "@/components/UploadPanel";
+import YouTubeAddPanel from "@/components/YouTubeAddPanel";
+import EmptyState from "@/components/EmptyState";
+import BottomPlayer from "@/components/BottomPlayer";
 import Toast from "@/components/Toast";
+import type { DropPos } from "@/components/TrackRow";
 import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
 import { dir as dirOf, strings } from "@/lib/i18n";
 import { createSamples } from "@/lib/samples";
@@ -108,6 +112,8 @@ export default function PlaylistApp() {
   const [trimEditId, setTrimEditId] = useState<string | null>(null);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
+  /** DOM refs to each section block — used by the sidebar to scroll to a section. */
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Refs
   const audioUrlCache = useRef<Record<string, string>>({});
@@ -854,6 +860,37 @@ export default function PlaylistApp() {
     [currentId, handlePlayPause],
   );
 
+  /** Hero primary-play button: if nothing's queued, start with first ordered track. */
+  const handlePrimaryPlay = useCallback(() => {
+    if (currentId) {
+      handlePlayPause();
+      return;
+    }
+    if (orderedTracks.length > 0) setCurrentId(orderedTracks[0].id);
+  }, [currentId, handlePlayPause, orderedTracks]);
+
+  /** Section play: jump to that section's first track. */
+  const handlePlaySection = useCallback(
+    (sectionId: string | null) => {
+      const list = orderedTracks.filter(
+        (tr) => (tr.sectionId ?? null) === sectionId,
+      );
+      if (list.length === 0) return;
+      const first = list[0];
+      if (first.id === currentId) handlePlayPause();
+      else setCurrentId(first.id);
+    },
+    [orderedTracks, currentId, handlePlayPause],
+  );
+
+  function registerSectionRef(id: string, el: HTMLElement | null) {
+    sectionRefs.current[id] = el;
+  }
+  function scrollToSection(id: string) {
+    const el = sectionRefs.current[id];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   /* ── Drag-and-drop ─────────────────────────────────────── */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState<DropPos>(null);
@@ -961,246 +998,46 @@ export default function PlaylistApp() {
   );
 
   /* ── Render ───────────────────────────────────────────── */
+  const hasYouTubeTracks = tracks.some((x) => x.source === "youtube");
+  const unassigned = tracksBySection["__unassigned__"] ?? [];
+
   return (
-    <div className="min-h-screen relative" dir={dirOf(lang)}>
-      <div
-        className="fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% 0%, #F4ECDF 0%, #EBE0CE 50%, #E5D5BC 100%)",
-        }}
-        aria-hidden
-      />
-
-      <div className="relative">
-        <div
-          className="mx-auto max-w-7xl px-6 py-8"
-          style={{ paddingBottom: 160 }}
-        >
-          <div className="stage-card paper-bg p-2">
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <Header
-                playlistName={playlistName}
-                onRename={handleRenamePlaylist}
-                t={t}
-                lang={lang}
-                onToggleLang={() =>
-                  setLang((l) => (l === "ar" ? "en" : "ar"))
-                }
-                onImport={handleImport}
-                onExport={handleExport}
-                onSamples={handleLoadSamples}
-                onClearAll={handleClearAll}
-                onValidate={handleValidate}
-                hasYouTubeTracks={tracks.some((x) => x.source === "youtube")}
-                validating={validating}
-                hasTracks={tracks.length > 0}
-              />
-
-              <div
-                className="px-8 pb-8 grid grid-cols-12 gap-6"
-                style={{ minHeight: 480 }}
-              >
-                <div className="col-span-12 lg:col-span-4">
-                  <AddPanel
-                    lang={lang}
-                    t={t}
-                    onAddFiles={handleAddFiles}
-                    onAddYouTube={handleAddYouTube}
-                  />
-                </div>
-
-                <div className="col-span-12 lg:col-span-8">
-                  <div className="stage-card p-6">
-                    <div className="flex items-baseline justify-between mb-4 px-1 gap-2 flex-wrap">
-                      <div className="label-tracked">
-                        {tracks.length}{" "}
-                        {tracks.length === 1 ? t.track : t.tracks}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          className="text-[10px]"
-                          onClick={handleAddSection}
-                          style={{
-                            fontFamily: "'Cinzel', serif",
-                            letterSpacing: "0.22em",
-                            textTransform: "uppercase",
-                            color: "#D89274",
-                          }}
-                          title={t.addSection}
-                        >
-                          + {t.addSection}
-                        </button>
-                        <div className="label-tracked">
-                          {t.total} ·{" "}
-                          <span className="tnum" style={{ color: "#3A2C20" }}>
-                            {fmtTime(totalSeconds)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {tracks.length === 0 && sections.length === 0 ? (
-                      <div className="text-center py-16 px-6">
-                        <div
-                          className="inline-flex items-center justify-center rounded-full mb-4"
-                          style={{
-                            width: 72,
-                            height: 72,
-                            background: "rgba(216,146,116,0.10)",
-                            border: "0.5px solid rgba(216,146,116,0.30)",
-                          }}
-                        >
-                          <span style={{ color: "#D89274", fontSize: 28 }}>♪</span>
-                        </div>
-                        <div
-                          className="font-italiana text-[28px]"
-                          style={{ color: "#D89274" }}
-                        >
-                          {t.addFirst}
-                        </div>
-                        <div
-                          className="font-cormorant text-[16px] mt-2 max-w-md mx-auto"
-                          style={{
-                            color: "#6B4A35",
-                            lineHeight: 1.5,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {t.emptyHint}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        {sections.map((sec, sIdx) => {
-                          const secTracks = tracksBySection[sec.id] ?? [];
-                          return (
-                            <SectionGroup
-                              key={sec.id}
-                              section={sec}
-                              isFirst={sIdx === 0}
-                              isLast={sIdx === sections.length - 1}
-                              tracks={secTracks}
-                              t={t}
-                              onMoveSection={handleMoveSection}
-                              onRenameSection={handleRenameSection}
-                              onDeleteSection={handleDeleteSection}
-                              onSectionDragOver={onSectionDragOver}
-                              onSectionDrop={onSectionDrop}
-                              isDropTarget={dragOverSection === sec.id}
-                            >
-                              {secTracks.map((tr, i) => (
-                                <TrackItem
-                                  key={tr.id}
-                                  track={tr}
-                                  idx={i}
-                                  isCurrent={tr.id === currentId}
-                                  isPlaying={tr.id === currentId && isPlaying}
-                                  t={t}
-                                  validation={
-                                    tr.source === "youtube"
-                                      ? validation[tr.youtubeId] ?? null
-                                      : null
-                                  }
-                                  onPlay={handlePlay}
-                                  onDelete={handleDelete}
-                                  onRename={handleRename}
-                                  onEditTrim={(id) => setTrimEditId(id)}
-                                  onDragStart={onDragStart}
-                                  onDragOver={onDragOver}
-                                  onDragLeave={onDragLeave}
-                                  onDrop={onDrop}
-                                  dropPos={dragOverId === tr.id ? dropPos : null}
-                                />
-                              ))}
-                            </SectionGroup>
-                          );
-                        })}
-
-                        {tracksBySection["__unassigned__"] &&
-                          tracksBySection["__unassigned__"].length > 0 && (
-                            <SectionGroup
-                              section={null}
-                              isFirst={false}
-                              isLast
-                              tracks={tracksBySection["__unassigned__"]}
-                              t={t}
-                              onMoveSection={handleMoveSection}
-                              onRenameSection={handleRenameSection}
-                              onDeleteSection={handleDeleteSection}
-                              onSectionDragOver={onSectionDragOver}
-                              onSectionDrop={onSectionDrop}
-                              isDropTarget={dragOverSection === null}
-                            >
-                              {tracksBySection["__unassigned__"].map((tr, i) => (
-                                <TrackItem
-                                  key={tr.id}
-                                  track={tr}
-                                  idx={i}
-                                  isCurrent={tr.id === currentId}
-                                  isPlaying={tr.id === currentId && isPlaying}
-                                  t={t}
-                                  validation={
-                                    tr.source === "youtube"
-                                      ? validation[tr.youtubeId] ?? null
-                                      : null
-                                  }
-                                  onPlay={handlePlay}
-                                  onDelete={handleDelete}
-                                  onRename={handleRename}
-                                  onEditTrim={(id) => setTrimEditId(id)}
-                                  onDragStart={onDragStart}
-                                  onDragOver={onDragOver}
-                                  onDragLeave={onDragLeave}
-                                  onDrop={onDrop}
-                                  dropPos={dragOverId === tr.id ? dropPos : null}
-                                />
-                              ))}
-                            </SectionGroup>
-                          )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-end gap-2 text-xs text-brownSoft">
-                    <label className="inline-flex items-center gap-2 select-none cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoplay}
-                        onChange={(e) => setAutoplay(e.target.checked)}
-                        style={{ accentColor: "#D89274" }}
-                      />
-                      <span style={{ letterSpacing: "0.05em" }}>{t.autoplay}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-6">
-            <div
-              className="font-amiri text-[15px]"
-              style={{ color: "#D89274" }}
-            >
-              {t.footerNote}
-            </div>
-          </div>
-        </div>
-
-        <PlayerBar
+    <AppShell
+      lang={lang}
+      sidebar={
+        <Sidebar
+          lang={lang}
+          t={t}
+          playlistName={playlistName}
+          totalSeconds={totalSeconds}
           tracks={tracks}
+          sections={sections}
+          hasYouTubeTracks={hasYouTubeTracks}
+          validating={validating}
+          onToggleLang={() => setLang((l) => (l === "ar" ? "en" : "ar"))}
+          onImport={handleImport}
+          onExport={handleExport}
+          onSamples={handleLoadSamples}
+          onValidate={handleValidate}
+          onClearAll={handleClearAll}
+          onAddSection={handleAddSection}
+          onScrollToSection={scrollToSection}
+        />
+      }
+      bottomPlayer={
+        <BottomPlayer
+          lang={lang}
+          t={t}
+          tracks={orderedTracks}
           currentId={currentId}
           isPlaying={isPlaying}
           position={position}
           duration={duration}
           volume={volume}
           muted={muted}
-          repeat={repeat}
           shuffle={shuffle}
-          lang={lang}
-          t={t}
+          repeat={repeat}
+          autoplay={autoplay}
           onPlayPause={handlePlayPause}
           onPrev={handlePrev}
           onNext={handleNext}
@@ -1212,37 +1049,107 @@ export default function PlaylistApp() {
           onToggleMute={() => setMuted((m) => !m)}
           onToggleRepeat={() => setRepeat((r) => !r)}
           onToggleShuffle={() => setShuffle((s) => !s)}
+          onToggleAutoplay={() => setAutoplay((a) => !a)}
+        />
+      }
+    >
+      <div className="flex flex-col gap-10">
+        <PlaylistHero
+          lang={lang}
+          t={t}
+          playlistName={playlistName}
+          onRenamePlaylist={handleRenamePlaylist}
+          tracks={tracks}
+          totalSeconds={totalSeconds}
+          hasCurrent={!!currentId}
+          isPlaying={isPlaying}
+          shuffle={shuffle}
+          repeat={repeat}
+          onPrimaryPlay={handlePrimaryPlay}
+          onToggleShuffle={() => setShuffle((s) => !s)}
+          onToggleRepeat={() => setRepeat((r) => !r)}
+          onMore={handleImport}
+          hasYouTubeTracks={hasYouTubeTracks}
         />
 
-        {/* Hidden YouTube host */}
-        <div className="youtube-host">
-          <div id="yt-host" />
+        {/* Composer — upload + YouTube */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
+          <UploadPanel t={t} onAddFiles={handleAddFiles} />
+          <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
         </div>
 
-        <Toast message={toast} />
+        {/* Track list or empty state */}
+        {tracks.length === 0 ? (
+          <EmptyState t={t} onSamples={handleLoadSamples} />
+        ) : (
+          <TrackList
+            lang={lang}
+            t={t}
+            sections={sections}
+            tracksBySection={tracksBySection}
+            unassigned={unassigned}
+            currentId={currentId}
+            isPlaying={isPlaying}
+            validation={validation}
+            onPlayTrack={handlePlay}
+            onDeleteTrack={handleDelete}
+            onRenameTrack={handleRename}
+            onEditTrim={(id) => setTrimEditId(id)}
+            onPlaySection={handlePlaySection}
+            onRenameSection={handleRenameSection}
+            onDeleteSection={handleDeleteSection}
+            onMoveSection={handleMoveSection}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onSectionDragOver={onSectionDragOver}
+            onSectionDrop={onSectionDrop}
+            dragOverId={dragOverId}
+            dropPos={dropPos}
+            dragOverSection={dragOverSection}
+            registerSectionRef={registerSectionRef}
+          />
+        )}
 
-        <ValidationModal
-          open={validationOpen}
-          onClose={() => setValidationOpen(false)}
-          tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
-          results={validation}
-          progress={validationProgress}
-          validating={validating}
-          t={t}
-          lang={lang}
-        />
-
-        <TrimModal
-          open={trimEditId != null}
-          track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
-          currentPosition={position}
-          positionIsForThisTrack={trimEditId === currentId}
-          onClose={() => setTrimEditId(null)}
-          onSave={handleSaveTrim}
-          t={t}
-          lang={lang}
-        />
+        <div className="text-center pt-4 pb-2">
+          <div
+            className="font-arabic-display"
+            style={{ color: "var(--gold-400)", fontSize: 15 }}
+          >
+            {t.footerNote}
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Hidden YouTube host */}
+      <div className="youtube-host">
+        <div id="yt-host" />
+      </div>
+
+      <Toast message={toast} />
+
+      <ValidationModal
+        open={validationOpen}
+        onClose={() => setValidationOpen(false)}
+        tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
+        results={validation}
+        progress={validationProgress}
+        validating={validating}
+        t={t}
+        lang={lang}
+      />
+
+      <TrimModal
+        open={trimEditId != null}
+        track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
+        currentPosition={position}
+        positionIsForThisTrack={trimEditId === currentId}
+        onClose={() => setTrimEditId(null)}
+        onSave={handleSaveTrim}
+        t={t}
+        lang={lang}
+      />
+    </AppShell>
   );
 }
