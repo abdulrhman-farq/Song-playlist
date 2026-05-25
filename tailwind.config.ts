@@ -35,6 +35,13 @@ const config: Config = {
           accent: "#22c55e",
           glow: "rgba(34, 197, 94, 0.18)",
         },
+        peach: {
+          200: "#f7d6c0",
+          300: "#ecb89a",
+          400: "#e09975",
+          500: "#c47352",
+          glow: "rgba(216, 146, 116, 0.22)",
+        },
         ink: {
           50: "#fafafa",
           200: "#e5e5e5",
