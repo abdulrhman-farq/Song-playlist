@@ -463,27 +463,28 @@ function TaskRow({
         {/* Due chip — opens the native datetime picker on tap. The
             hidden datetime-local input sits behind the styled chip so
             the chip stays peach-on-sepia but iOS/Android still show
-            their full calendar + time UI. */}
-        <div className="mt-1.5 relative inline-block">
-          {entry.done && entry.completedAt ? (
+            their full calendar + time UI. The original due date stays
+            visible after completion (matching Google Tasks), with a
+            small "Completed …" line appended below. */}
+        <div className="mt-1.5 flex flex-col gap-1 items-start">
+          {entry.due ? (
             <span
-              className="text-[12px]"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {t.tasksCompletedPrefix}: {completedLabel}
-            </span>
-          ) : entry.due ? (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full text-[12px]"
+              className="inline-flex items-center gap-1.5 rounded-full text-[12px] relative"
               style={{
-                color: overdue ? "var(--danger)" : "var(--gold-300)",
+                color: entry.done
+                  ? "var(--text-muted)"
+                  : overdue
+                    ? "var(--danger)"
+                    : "var(--gold-300)",
                 border: "1px solid",
-                borderColor: overdue
-                  ? "rgba(243, 160, 138, 0.5)"
-                  : "rgba(216, 146, 116, 0.3)",
+                borderColor: entry.done
+                  ? "rgba(216, 146, 116, 0.15)"
+                  : overdue
+                    ? "rgba(243, 160, 138, 0.5)"
+                    : "rgba(216, 146, 116, 0.3)",
                 padding: "3px 10px",
                 cursor: locked ? "default" : "pointer",
-                position: "relative",
+                opacity: entry.done ? 0.75 : 1,
               }}
               title={locked ? undefined : t.tasksEditDue}
             >
@@ -507,7 +508,8 @@ function TaskRow({
               )}
             </span>
           ) : (
-            !locked && (
+            !locked &&
+            !entry.done && (
               <span
                 className="inline-flex items-center gap-1.5 text-[12px] italic relative"
                 style={{ color: "var(--text-faint)", cursor: "pointer" }}
@@ -530,6 +532,18 @@ function TaskRow({
                 />
               </span>
             )
+          )}
+
+          {entry.done && completedLabel && (
+            <span
+              className="inline-flex items-center gap-1 text-[11px]"
+              style={{ color: "var(--text-faint)" }}
+            >
+              <CheckMini />
+              <span>
+                {t.tasksCompletedPrefix}: {completedLabel}
+              </span>
+            </span>
           )}
         </div>
       </div>
@@ -595,6 +609,24 @@ function CalendarGlyph() {
     >
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M3 9h18M8 2v4M16 2v4" />
+    </svg>
+  );
+}
+
+function CheckMini() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
