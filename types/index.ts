@@ -113,6 +113,18 @@ export interface TaskEntry {
   completedAt?: string;
   /** Marked important — drives a peach star + sort priority. */
   starred?: boolean;
+  /** Priority level — drives the small dot at row's end. */
+  priority?: "low" | "med" | "high";
+  /** Optional Arabic-first category label (single value, e.g. "الموردين"). */
+  category?: string;
+  /** Optional linked-song free-text reference. */
+  linkedSong?: string;
+  /** Optional vendor / contact free-text reference. */
+  vendor?: string;
+  /** Reminder toggle stub — UI only for now. */
+  reminder?: boolean;
+  /** Pinned to the top of the open list (above date sort). */
+  pinned?: boolean;
 }
 
 export interface TaskDoc {

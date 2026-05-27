@@ -99,3 +99,76 @@ export function isOverdue(due: string | undefined | null): boolean {
   if (d) return d.getTime() < Date.now();
   return /ago/i.test(due);
 }
+
+/**
+ * Compact meta-line used in the redesigned task row. Variants:
+ *   "Today · 3:00 PM"
+ *   "Tomorrow · 9:30 AM"
+ *   "Fri, 29 May · 11:30 PM"
+ *   "Fri, 29 May"             (no time component on the value)
+ *
+ * Falls back to formatDue() for legacy / weird inputs so we never
+ * render a blank meta line.
+ */
+export function formatDueMeta(
+  due: string | undefined | null,
+  lang: Language,
+): string {
+  if (!due) return "";
+  const d = parseDue(due);
+  if (!d) return formatDue(due, lang);
+  const locale = lang === "ar" ? "ar" : "en-US";
+  const hasTime = dueHasTime(due);
+
+  const now = new Date();
+  const startOfDay = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dayDiff = Math.round((startOfDay(d) - startOfDay(now)) / 86_400_000);
+
+  const time = hasTime
+    ? d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })
+    : "";
+
+  const todayLabel = lang === "ar" ? "اليوم" : "Today";
+  const tomorrowLabel = lang === "ar" ? "غدًا" : "Tomorrow";
+  const yesterdayLabel = lang === "ar" ? "أمس" : "Yesterday";
+  const sep = " · ";
+
+  if (dayDiff === 0) return hasTime ? `${todayLabel}${sep}${time}` : todayLabel;
+  if (dayDiff === 1)
+    return hasTime ? `${tomorrowLabel}${sep}${time}` : tomorrowLabel;
+  if (dayDiff === -1)
+    return hasTime ? `${yesterdayLabel}${sep}${time}` : yesterdayLabel;
+
+  const dateStr = d.toLocaleDateString(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return hasTime ? `${dateStr}${sep}${time}` : dateStr;
+}
+
+/** True when the stored due date falls on today's local date. */
+export function isToday(due: string | undefined | null): boolean {
+  const d = parseDue(due);
+  if (!d) return false;
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+/** True when due falls strictly after today (excluding today itself). */
+export function isUpcoming(due: string | undefined | null): boolean {
+  const d = parseDue(due);
+  if (!d) return false;
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  return d.getTime() >= startOfToday + 86_400_000;
+}
