@@ -229,7 +229,10 @@ function SectionBlock({
   return (
     <section
       ref={(el) => {
-        if (section) registerSectionRef(section.id, el);
+        // Real sections register under their own id; the implicit
+        // Unassigned block registers under a stable sentinel so the
+        // sidebar jump list can scroll to it too.
+        registerSectionRef(section?.id ?? "__unassigned__", el);
       }}
       data-section-id={sectionId ?? "__unassigned__"}
       className={isDropTarget ? "section-drop-target" : undefined}

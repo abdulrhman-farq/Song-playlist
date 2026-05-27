@@ -251,6 +251,35 @@ export default function Sidebar({
             </button>
           );
         })}
+        {(() => {
+          // Implicit Unassigned bucket — surface it here so the user
+          // can jump to it like any named section. Hidden when every
+          // track is already grouped.
+          const unassignedCount = tracks.filter((tr) => !tr.sectionId).length;
+          if (unassignedCount === 0) return null;
+          return (
+            <button
+              type="button"
+              onClick={actAndClose(() =>
+                onScrollToSection("__unassigned__"),
+              )}
+              className="nav-row group"
+            >
+              <span
+                className="truncate flex-1 italic"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {t.sectionUnassigned}
+              </span>
+              <span
+                className="text-[10px] tnum"
+                style={{ color: "var(--gold-300)" }}
+              >
+                {unassignedCount}
+              </span>
+            </button>
+          );
+        })()}
       </div>
 
       {/* Playlist stats card */}
