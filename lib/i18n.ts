@@ -55,6 +55,15 @@ export const strings = {
     mute: "Mute",
     unmute: "Unmute",
     language: "Language",
+    // === TRACKLIST V2 START ===
+    rowActions: "Track options",
+    swipeHint: "Swipe for options",
+    longPressHint: "Hold for options",
+    nowPlayingShort: "Playing",
+    sectionTotal: "Total",
+    dropZoneEmpty: "Drag tracks here · or pick from your library",
+    trackUnavailable: "Unavailable",
+    // === TRACKLIST V2 END ===
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -109,6 +118,15 @@ export const strings = {
     mute: "كتم",
     unmute: "إلغاء الكتم",
     language: "اللغة",
+    // === TRACKLIST V2 START ===
+    rowActions: "خيارات المقطع",
+    swipeHint: "اسحب للخيارات",
+    longPressHint: "اضغط مطوّلاً للخيارات",
+    nowPlayingShort: "قيد التشغيل",
+    sectionTotal: "المجموع",
+    dropZoneEmpty: "اسحب المقاطع هنا · أو اختر من مكتبتك",
+    trackUnavailable: "غير متوفر",
+    // === TRACKLIST V2 END ===
   },
 } satisfies Record<Language, Record<string, unknown>>;
 
