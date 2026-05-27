@@ -134,6 +134,29 @@ export interface TaskDoc {
 }
 
 /**
+ * Guest list / RSVP entry. Tracks who's invited, who replied,
+ * inspired by Saudi mazoom-style invitation platforms.
+ */
+export type GuestStatus = "pending" | "attending" | "declined" | "maybe";
+
+export interface GuestEntry {
+  id: string;
+  name: string;
+  phone?: string;
+  status: GuestStatus;
+  /** Bride / groom side — useful for capacity planning. */
+  side?: "bride" | "groom" | "both";
+  /** Number of seats this person brings (default 1). */
+  partySize?: number;
+  note?: string;
+}
+
+export interface GuestDoc {
+  entries: GuestEntry[];
+  version?: number;
+}
+
+/**
  * Every header / footer block on the printable timeline. Empty
  * string for a field means the block is hidden — the user removed
  * it. Reset-to-default restores all.

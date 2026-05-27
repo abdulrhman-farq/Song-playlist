@@ -65,6 +65,9 @@ const Tasks = dynamic(() => import("@/components/Tasks"), {
 const LiveMode = dynamic(() => import("@/components/LiveMode"), {
   ssr: false,
 });
+const Guests = dynamic(() => import("@/components/Guests"), {
+  ssr: false,
+});
 const TrimModal = dynamic(() => import("@/components/TrimModal"), {
   ssr: false,
 });
@@ -172,6 +175,8 @@ export default function PlaylistApp() {
   const [tasksOpen, setTasksOpen] = useState(false);
   // Live wedding mode overlay
   const [liveOpen, setLiveOpen] = useState(false);
+  // Guest book overlay
+  const [guestsOpen, setGuestsOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1220,6 +1225,8 @@ export default function PlaylistApp() {
   const handleCloseTasks = useCallback(() => setTasksOpen(false), []);
   const handleOpenLive = useCallback(() => setLiveOpen(true), []);
   const handleCloseLive = useCallback(() => setLiveOpen(false), []);
+  const handleOpenGuests = useCallback(() => setGuestsOpen(true), []);
+  const handleCloseGuests = useCallback(() => setGuestsOpen(false), []);
   const handleVolumeChange = useCallback((v: number) => {
     setVolume(v);
     setMuted(false);
@@ -1277,6 +1284,7 @@ export default function PlaylistApp() {
           onOpenTimeline={handleOpenTimeline}
           onOpenTasks={handleOpenTasks}
           onOpenLive={handleOpenLive}
+          onOpenGuests={handleOpenGuests}
           onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
@@ -1511,6 +1519,10 @@ export default function PlaylistApp() {
           currentTrack={tracks.find((x) => x.id === currentId) ?? null}
           isPlaying={isPlaying}
         />
+      )}
+
+      {guestsOpen && (
+        <Guests lang={lang} t={t} onClose={handleCloseGuests} />
       )}
 
       <UndoToast />
