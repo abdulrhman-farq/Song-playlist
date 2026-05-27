@@ -164,8 +164,8 @@ function BottomPlayerImpl({
           className="icon-btn magnet"
           onClick={() => toggleCollapsed(false)}
           style={{ width: 28, height: 28 }}
-          title="Show player"
-          aria-label="Show player"
+          title={t.showPlayer}
+          aria-label={t.showPlayer}
         >
           <IconArrowUp size={14} />
         </button>
@@ -190,24 +190,47 @@ function BottomPlayerImpl({
         zIndex: "var(--z-player)" as unknown as number,
       }}
     >
-      {/* Hide button — floats top-right of the bar, collapses the player
-          to a small floating pill until the user expands it again. */}
+      {/* Hide handle — visible peach pill that sticks ABOVE the player
+          bar (iOS-style bottom-sheet handle). Centered so it's
+          obvious + reachable with either thumb. */}
       <button
         type="button"
         onClick={() => toggleCollapsed(true)}
-        className="icon-btn"
         style={{
           position: "absolute",
-          top: 4,
-          insetInlineEnd: 8,
-          width: 24,
-          height: 24,
+          top: -22,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 76,
+          height: 26,
+          borderRadius: "12px 12px 0 0",
+          background:
+            "linear-gradient(180deg, rgba(58, 44, 34, 0.96) 0%, rgba(42, 32, 26, 0.98) 100%)",
+          border: "1px solid rgba(216, 146, 116, 0.32)",
+          borderBottom: "none",
+          color: "var(--gold-300)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          cursor: "pointer",
           zIndex: 2,
+          boxShadow: "0 -4px 12px -4px rgba(0,0,0,0.5)",
         }}
-        title="Hide player"
-        aria-label="Hide player"
+        title={t.hidePlayer}
+        aria-label={t.hidePlayer}
       >
-        <IconArrowDown size={13} />
+        <span
+          aria-hidden
+          style={{
+            display: "inline-block",
+            width: 28,
+            height: 3,
+            borderRadius: 2,
+            background: "var(--gold-400)",
+          }}
+        />
+        <IconArrowDown size={14} />
       </button>
       {/* Ambient gold haze when actively playing */}
       {isPlaying && current && (
