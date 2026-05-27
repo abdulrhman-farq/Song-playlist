@@ -37,3 +37,6 @@ next-env.d.ts.bak
 # editor
 .vscode/
 .idea/
+
+# Claude Code background-agent worktrees
+.claude/

@@ -1,26 +1,46 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AddPanel from "@/components/AddPanel";
-import Header from "@/components/Header";
-import PlayerBar from "@/components/Player";
-import TrackItem, { type DropPos } from "@/components/TrackItem";
+import dynamic from "next/dynamic";
+import AppShell from "@/components/AppShell";
+import Sidebar from "@/components/Sidebar";
+import PlaylistHero from "@/components/PlaylistHero";
+import HomeRecap from "@/components/HomeRecap";
+import TrackList from "@/components/TrackList";
+import UploadPanel, { type UploadProgress } from "@/components/UploadPanel";
+import { extractAudio, isVideoFile } from "@/lib/audioExtraction";
+import YouTubeAddPanel from "@/components/YouTubeAddPanel";
+import EmptyState from "@/components/EmptyState";
+import BottomPlayer from "@/components/BottomPlayer";
 import Toast from "@/components/Toast";
-import { fmtTime, probeAudioDuration, titleFromFilename, uid } from "@/lib/format";
+import { ConfirmDialog, PromptDialog } from "@/components/Dialog";
+import { LockModeProvider, UnlockedOnly, useLockMode } from "@/lib/lockMode";
+import { UndoContextProvider, useUndoController } from "@/lib/undo";
+import UndoToast from "@/components/UndoToast";
+import EditModeToolbar from "@/components/EditModeToolbar";
+import EditableBlock from "@/components/EditableBlock";
+import EditableText from "@/components/EditableText";
+import { EditModeProvider } from "@/lib/editMode";
+import type { DropPos } from "@/components/TrackRow";
+import { probeAudioDuration, titleFromFilename } from "@/lib/format";
 import { dir as dirOf, strings } from "@/lib/i18n";
 import { createSamples } from "@/lib/samples";
+import { createDefaultSections } from "@/lib/sections";
 import {
-  clearBlobs,
   deleteBlob,
   getBlob,
   loadLanguage,
-  loadMeta,
   putBlob,
-  sanitizeTracksForSave,
   saveLanguage,
-  saveMeta,
 } from "@/lib/storage";
+import { useRealtimePlaylist } from "@/lib/realtimeSync";
 import { fetchYouTubeTitle } from "@/lib/youtube";
+import {
+  checkEmbedsBatch,
+  loadYouTubeAPI,
+  type EmbedCheckResult,
+  type YTPlayerInstance,
+} from "@/lib/ytApi";
 import type {
   ExportedPlaylist,
   ExportedTrackYouTube,
@@ -30,97 +50,127 @@ import type {
   YouTubeTrack,
 } from "@/types";
 
-/* ── YouTube IFrame API loader (shared) ───────────────────────────────── */
-
-interface YTPlayerInstance {
-  playVideo: () => void;
-  pauseVideo: () => void;
-  stopVideo: () => void;
-  seekTo: (s: number, allowSeekAhead?: boolean) => void;
-  setVolume: (v: number) => void;
-  getCurrentTime: () => number;
-  getDuration: () => number;
-  getPlayerState: () => number;
-  loadVideoById: (id: string) => void;
-  destroy: () => void;
-}
-
-interface YTNamespace {
-  Player: new (
-    target: HTMLElement | string,
-    opts: Record<string, unknown>,
-  ) => YTPlayerInstance;
-  PlayerState: {
-    ENDED: number;
-    PLAYING: number;
-    PAUSED: number;
-    BUFFERING: number;
-    CUED: number;
-    UNSTARTED: number;
-  };
-}
-
-declare global {
-  interface Window {
-    YT?: YTNamespace;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-let ytReady: Promise<YTNamespace> | null = null;
-function loadYouTubeAPI(): Promise<YTNamespace> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("no window"));
-  }
-  if (ytReady) return ytReady;
-  ytReady = new Promise<YTNamespace>((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve(window.YT);
-      return;
-    }
-    if (!document.querySelector('script[data-wp-yt-api="1"]')) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      tag.async = true;
-      tag.dataset.wpYtApi = "1";
-      document.head.appendChild(tag);
-    }
-    const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      prev?.();
-      if (window.YT) resolve(window.YT);
-    };
-  });
-  return ytReady;
-}
+/* ── Deferred imports ─────────────────────────────────────────────────
+   These three only mount when the user opens them — there's no value
+   in shipping them in the initial bundle. `ssr: false` because they
+   each touch browser-only APIs (window/localStorage) and aren't part
+   of the first paint anyway. Each lazy chunk lands separately so the
+   first-render JS budget stays tight. */
+const Timeline = dynamic(() => import("@/components/Timeline"), {
+  ssr: false,
+});
+const Tasks = dynamic(() => import("@/components/Tasks"), {
+  ssr: false,
+});
+const TrimModal = dynamic(() => import("@/components/TrimModal"), {
+  ssr: false,
+});
+const ValidationModal = dynamic(() => import("@/components/ValidationModal"), {
+  ssr: false,
+});
+const ClipsWorkbench = dynamic(() => import("@/components/ClipsWorkbench"), {
+  ssr: false,
+});
 
 /* ── Component ────────────────────────────────────────────────────────── */
 
 export default function PlaylistApp() {
-  // Language
+  // Language (still purely local — language preference is per-device)
   const [lang, setLang] = useState<Language>("en");
   const t = strings[lang];
 
-  // Playlist
-  const [playlistName, setPlaylistName] = useState<string>(strings.en.untitled);
-  const [tracks, setTracks] = useState<Track[]>([]);
+  // ── Realtime-backed playlist state ───────────────────────────
+  // The hook owns every cross-client field (name, tracks, sections,
+  // autoplay/shuffle/repeat/volume) and pushes updates over Supabase
+  // Realtime so every connected browser stays in sync.
+  const rt = useRealtimePlaylist(strings.en.untitled);
+  const tracks = rt.tracks;
+  const sections = rt.sections;
+  const playlistName = rt.settings.name;
+  const loaded = rt.loaded;
+  const realtimeStatus = rt.status;
+
+  // Settings: alias the hook setters so the rest of the component
+  // reads as before. These call Supabase under the hood.
+  const volume = rt.settings.volume;
+  const autoplay = rt.settings.autoplay;
+  const shuffle = rt.settings.shuffle;
+  const repeat = rt.settings.repeat;
+  const setVolume = rt.setVolume;
+  const setAutoplay = rt.setAutoplay;
+  const setShuffle = rt.setShuffle;
+  const setRepeat = rt.setRepeat;
+
   const [currentId, setCurrentId] = useState<string | null>(null);
 
-  // Transport state
+  // Seed defaults once if the DB starts empty
+  const seededRef = useRef(false);
+
+  /**
+   * The track list ordered by section: for each section (in section
+   * order), append tracks belonging to it (preserving their relative
+   * order in `tracks`). Unassigned tracks come last. This is what
+   * next/prev navigation walks.
+   */
+  const orderedTracks = useMemo<Track[]>(() => {
+    const bySection: Record<string, Track[]> = {};
+    const unassigned: Track[] = [];
+    for (const tr of tracks) {
+      const sid = tr.sectionId;
+      if (sid && sections.some((s) => s.id === sid)) {
+        (bySection[sid] ??= []).push(tr);
+      } else {
+        unassigned.push(tr);
+      }
+    }
+    const out: Track[] = [];
+    for (const sec of sections) {
+      if (bySection[sec.id]) out.push(...bySection[sec.id]);
+    }
+    out.push(...unassigned);
+    return out;
+  }, [tracks, sections]);
+
+  // Transport state (transient, not synced)
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
-
-  // Modes
-  const [autoplay, setAutoplay] = useState(true);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState(false);
 
   // UX
   const [toast, setToast] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [uploadProgress, setUploadProgress] =
+    useState<UploadProgress | null>(null);
+
+  // YouTube embed validation
+  const [validation, setValidation] = useState<Record<string, EmbedCheckResult>>({});
+  const [validating, setValidating] = useState(false);
+  const [validationOpen, setValidationOpen] = useState(false);
+  const [validationProgress, setValidationProgress] = useState<{ done: number; total: number }>({
+    done: 0,
+    total: 0,
+  });
+
+  // Trim editor
+  const [trimEditId, setTrimEditId] = useState<string | null>(null);
+  const [clipsWorkbenchOpen, setClipsWorkbenchOpen] = useState(false);
+
+  /** Single state-machine for the prompt/confirm dialogs that used
+   *  to be browser-native `prompt()` / `confirm()` calls. */
+  type DialogState =
+    | { kind: "none" }
+    | { kind: "add-section" }
+    | { kind: "rename-section"; id: string; current: string }
+    | { kind: "confirm-clear" };
+  const [dialog, setDialog] = useState<DialogState>({ kind: "none" });
+  // Timeline overlay
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  // Tasks overlay
+  const [tasksOpen, setTasksOpen] = useState(false);
+  /** Mirror of the active track's endAt so playback listeners can check it. */
+  const endAtRef = useRef<number | null>(null);
+  /** DOM refs to each section block — used by the sidebar to scroll to a section. */
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Refs
   const audioUrlCache = useRef<Record<string, string>>({});
@@ -129,7 +179,7 @@ export default function PlaylistApp() {
   const ytPollRef = useRef<number | null>(null);
   const currentIdRef = useRef<string | null>(null);
 
-  /* ── Load saved state on mount ───────────────────────────── */
+  /* ── Load language preference on mount (still local-only) ── */
   useEffect(() => {
     const savedLang =
       loadLanguage() ??
@@ -138,19 +188,6 @@ export default function PlaylistApp() {
         ? "ar"
         : "en");
     setLang(savedLang);
-
-    const saved = loadMeta();
-    if (saved) {
-      setPlaylistName(saved.name || strings[savedLang].untitled);
-      setTracks(Array.isArray(saved.tracks) ? saved.tracks : []);
-      if (typeof saved.volume === "number") setVolume(saved.volume);
-      if (typeof saved.autoplay === "boolean") setAutoplay(saved.autoplay);
-      if (typeof saved.shuffle === "boolean") setShuffle(saved.shuffle);
-      if (typeof saved.repeat === "boolean") setRepeat(saved.repeat);
-    } else {
-      setPlaylistName(strings[savedLang].untitled);
-    }
-    setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -162,18 +199,20 @@ export default function PlaylistApp() {
     saveLanguage(lang);
   }, [lang]);
 
-  /* ── Persist metadata ──────────────────────────────────── */
+  /* ── Seed default sections once if the DB is empty ──────── */
   useEffect(() => {
-    if (!loaded) return;
-    saveMeta({
-      name: playlistName,
-      tracks: sanitizeTracksForSave(tracks),
-      volume,
-      autoplay,
-      shuffle,
-      repeat,
+    if (!loaded || seededRef.current) return;
+    if (sections.length > 0) {
+      seededRef.current = true;
+      return;
+    }
+    seededRef.current = true;
+    const defaults = createDefaultSections(strings[lang]);
+    void rt.replaceAll({
+      sections: defaults.map((s) => ({ label: s.label })),
     });
-  }, [loaded, playlistName, tracks, volume, autoplay, shuffle, repeat]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, sections.length, lang]);
 
   /* ── Toast helper ──────────────────────────────────────── */
   const toastTimer = useRef<number | null>(null);
@@ -206,30 +245,79 @@ export default function PlaylistApp() {
   /* ── Add files ─────────────────────────────────────────── */
   const handleAddFiles = useCallback(
     async (files: File[]) => {
-      const added: UploadTrack[] = [];
+      let addedCount = 0;
       for (const file of files) {
-        const id = uid();
+        const needsExtraction = isVideoFile(file);
         try {
-          await putBlob(id, file);
+          if (needsExtraction) {
+            setUploadProgress({ name: file.name, pct: 0 });
+          }
+          const { blob, outputName, extracted } = await extractAudio(
+            file,
+            (pct) => {
+              if (needsExtraction) {
+                setUploadProgress({ name: file.name, pct });
+              }
+            },
+          );
+          const dur = await probeAudioDuration(blob).catch(() => null);
+          // Insert into Supabase first to obtain the row id, then key
+          // the local IndexedDB blob under that same id so playback
+          // resolution (getBlob(track.id)) works without translation.
+          const id = await rt.addTrack({
+            source: "upload",
+            title: titleFromFilename(file.name),
+            blobName: extracted ? outputName : file.name,
+            note: file.name,
+            duration: dur,
+          });
+          try {
+            await putBlob(id, blob);
+          } catch {
+            /* best-effort */
+          }
+          addedCount += 1;
         } catch {
-          /* best-effort */
+          flash(t.extractionFailed.replace("{name}", file.name));
+        } finally {
+          if (needsExtraction) setUploadProgress(null);
         }
-        const dur = await probeAudioDuration(file).catch(() => null);
-        added.push({
-          id,
-          source: "upload",
-          title: titleFromFilename(file.name),
-          duration: dur,
-          note: file.name,
-          blobName: file.name,
-          mimeType: file.type || "audio/*",
-          fileSize: file.size,
-        });
       }
-      setTracks((prev) => [...prev, ...added]);
-      flash(`+ ${added.length} ${added.length === 1 ? t.track : t.tracks}`);
+      if (addedCount > 0) {
+        flash(`+ ${addedCount} ${addedCount === 1 ? t.track : t.tracks}`);
+      }
     },
-    [flash, t.track, t.tracks],
+    [flash, rt, t.extractionFailed, t.track, t.tracks],
+  );
+
+  /* ── DJ Clips Workbench — accept the merged WAV blob and add as
+        a new upload-source track so it plays like any uploaded mp3. */
+  const handleMergeComplete = useCallback(
+    async (args: { blob: Blob; title: string; duration: number }) => {
+      const id = await rt.addTrack({
+        source: "upload",
+        title: args.title,
+        blobName: `${args.title}.wav`,
+        note: `mixed · ${Math.round(args.duration)}s`,
+        duration: args.duration,
+      });
+      try {
+        await putBlob(id, args.blob);
+      } catch {
+        /* best effort */
+      }
+      flash(t.mergeSuccess);
+    },
+    [rt, flash, t.mergeSuccess],
+  );
+
+  const handleOpenClipsWorkbench = useCallback(
+    () => setClipsWorkbenchOpen(true),
+    [],
+  );
+  const handleCloseClipsWorkbench = useCallback(
+    () => setClipsWorkbenchOpen(false),
+    [],
   );
 
   /* ── Add YouTube ───────────────────────────────────────── */
@@ -240,26 +328,76 @@ export default function PlaylistApp() {
         const fetched = await fetchYouTubeTitle(id);
         finalTitle = fetched ?? `YouTube · ${id}`;
       }
-      const tr: YouTubeTrack = {
-        id: uid(),
+      await rt.addTrack({
         source: "youtube",
         title: finalTitle,
         youtubeId: id,
         url,
         duration: null,
-      };
-      setTracks((prev) => [...prev, tr]);
+      });
       flash("+ " + finalTitle);
     },
-    [flash],
+    [flash, rt],
   );
 
   /* ── Samples ──────────────────────────────────────────── */
-  const handleLoadSamples = useCallback(() => {
+  const handleLoadSamples = useCallback(async () => {
     const s = createSamples();
-    setTracks((prev) => [...prev, ...s]);
+    for (const sample of s) {
+      if (sample.source !== "youtube") continue;
+      await rt.addTrack({
+        source: "youtube",
+        title: sample.title,
+        youtubeId: sample.youtubeId,
+        url: sample.url,
+        note: sample.note,
+        duration: sample.duration,
+      });
+    }
     flash(`+ ${s.length} ${t.tracks}`);
-  }, [flash, t.tracks]);
+  }, [flash, rt, t.tracks]);
+
+  /* ── Validate YouTube embeds ───────────────────────────── */
+  const handleValidate = useCallback(async () => {
+    const ytIds = tracks
+      .filter((x): x is YouTubeTrack => x.source === "youtube")
+      .map((x) => x.youtubeId);
+    if (ytIds.length === 0) {
+      flash(t.noYouTubeTracks);
+      return;
+    }
+    setValidating(true);
+    setValidationOpen(true);
+    setValidationProgress({ done: 0, total: ytIds.length });
+    // Clear any prior results so the badges visually reset
+    setValidation({});
+    try {
+      const results = await checkEmbedsBatch(
+        ytIds,
+        (done, total) => setValidationProgress({ done, total }),
+        3,
+      );
+      const flat: Record<string, EmbedCheckResult> = {};
+      results.forEach((v, k) => {
+        flat[k] = v;
+      });
+      setValidation(flat);
+      const broken = Array.from(results.values()).filter((v) => v.kind !== "ok").length;
+      flash(
+        broken === 0
+          ? t.allEmbedsOk
+          : `${broken} ${broken === 1 ? t.brokenEmbed : t.brokenEmbeds}`,
+      );
+    } finally {
+      setValidating(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracks, flash]);
+
+  // Global undo controller — every destructive op (track delete,
+  // section delete, clear all, task delete) pushes a revert closure
+  // onto this controller and the floating UndoToast surfaces it.
+  const undoCtl = useUndoController();
 
   /* ── Stop / teardown ───────────────────────────────────── */
   const stopPlayback = useCallback(() => {
@@ -285,6 +423,12 @@ export default function PlaylistApp() {
   const handleDelete = useCallback(
     async (id: string) => {
       const tr = tracks.find((x) => x.id === id);
+      // Snapshot before deletion so undo can rebuild the row. Upload
+      // tracks blow up their blob too — those don't get undo since
+      // the audio is irreversibly gone.
+      const wasYouTube = tr?.source === "youtube";
+      const snapshot = tr;
+
       if (tr && tr.source === "upload") {
         await deleteBlob(id).catch(() => {});
         const url = audioUrlCache.current[id];
@@ -293,47 +437,199 @@ export default function PlaylistApp() {
           delete audioUrlCache.current[id];
         }
       }
-      setTracks((prev) => prev.filter((x) => x.id !== id));
+      await rt.removeTrack(id);
       if (currentId === id) {
         stopPlayback();
         setCurrentId(null);
       }
+
+      if (snapshot && wasYouTube && snapshot.source === "youtube") {
+        const label = `${t.toastTrackRemoved ?? "Track removed"} · "${snapshot.title}"`;
+        undoCtl.pushUndo(label, () => {
+          void rt.addTrack({
+            title: snapshot.title,
+            source: "youtube",
+            youtubeId: snapshot.youtubeId,
+            url: snapshot.url,
+            note: snapshot.note ?? null,
+            duration: snapshot.duration ?? null,
+            sectionId: snapshot.sectionId ?? null,
+          });
+        });
+      }
     },
-    [currentId, stopPlayback, tracks],
+    [currentId, rt, stopPlayback, tracks, undoCtl, t.toastTrackRemoved],
   );
 
-  const handleRename = useCallback((id: string, title: string) => {
-    setTracks((prev) => prev.map((x) => (x.id === id ? { ...x, title } : x)));
+  const handleRename = useCallback(
+    (id: string, title: string) => {
+      void rt.renameTrack(id, title);
+    },
+    [rt],
+  );
+
+  /* ── Section ops ───────────────────────────────────────── */
+  const handleAddSection = useCallback(() => {
+    setDialog({ kind: "add-section" });
   }, []);
 
-  const handleRenamePlaylist = useCallback((name: string) => {
-    setPlaylistName(name);
-  }, []);
+  const handleRenameSection = useCallback(
+    (id: string) => {
+      const current = sections.find((s) => s.id === id);
+      if (!current) return;
+      setDialog({ kind: "rename-section", id, current: current.label });
+    },
+    [sections],
+  );
+
+  const handleDeleteSection = useCallback(
+    (id: string) => {
+      const snap = sections.find((s) => s.id === id);
+      const tracksInSection = tracks
+        .filter((tr) => tr.sectionId === id)
+        .map((tr) => tr.id);
+      void rt.removeSection(id);
+      if (snap) {
+        const label = `${t.toastSectionRemoved ?? "Section removed"} · "${snap.label}"`;
+        undoCtl.pushUndo(label, () => {
+          // Recreate the section, then sweep the orphaned tracks
+          // back into it (removeSection unassigns them rather than
+          // deleting, so the IDs are still alive).
+          void (async () => {
+            const newId = await rt.addSection(snap.label);
+            for (const trackId of tracksInSection) {
+              await rt.moveTrackToSection(trackId, newId);
+            }
+          })();
+        });
+      }
+    },
+    [rt, sections, tracks, undoCtl, t.toastSectionRemoved],
+  );
+
+  const handleMoveSection = useCallback(
+    (id: string, direction: -1 | 1) => {
+      void rt.moveSection(id, direction);
+    },
+    [rt],
+  );
+
+  /**
+   * Drag-reorder: move section `fromId` to land above or below `toId`.
+   * We compute the up/down delta and call moveSection repeatedly.
+   */
+  const handleReorderSections = useCallback(
+    async (fromId: string, toId: string, pos: "above" | "below") => {
+      if (fromId === toId) return;
+      const fromIdx = sections.findIndex((s) => s.id === fromId);
+      const toIdx = sections.findIndex((s) => s.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      let desiredIdx = toIdx;
+      if (pos === "below") desiredIdx += 1;
+      if (desiredIdx > fromIdx) desiredIdx -= 1;
+      const delta = desiredIdx - fromIdx;
+      if (delta === 0) return;
+      const step: -1 | 1 = delta > 0 ? 1 : -1;
+      for (let i = 0; i < Math.abs(delta); i++) {
+        // Sequentially nudge; each move updates Supabase + waits for
+        // the row to come back over realtime before computing the next.
+        await rt.moveSection(fromId, step);
+      }
+    },
+    [rt, sections],
+  );
+
+  /**
+   * Clone a section's label + every track inside it. New section lands
+   * directly after the source; new tracks get fresh IDs in the same
+   * order. Uploaded blobs are NOT cloned in IndexedDB — duplicate
+   * upload rows reference the same blob key (same id is impossible
+   * since UUIDs are fresh, so duplicate uploads on remote devices
+   * are unplayable until that device uploads its own copy).
+   */
+  const handleDuplicateSection = useCallback(
+    async (id: string) => {
+      const sourceIdx = sections.findIndex((s) => s.id === id);
+      if (sourceIdx < 0) return;
+      const source = sections[sourceIdx];
+      const newSectionId = await rt.addSection(`${source.label} (copy)`);
+      const sourceTracks = tracks.filter((tr) => tr.sectionId === id);
+      for (const tr of sourceTracks) {
+        if (tr.source === "youtube") {
+          await rt.addTrack({
+            source: "youtube",
+            title: tr.title,
+            youtubeId: tr.youtubeId,
+            url: tr.url,
+            note: tr.note,
+            duration: tr.duration,
+            sectionId: newSectionId,
+          });
+        } else {
+          await rt.addTrack({
+            source: "upload",
+            title: tr.title,
+            blobName: tr.blobName,
+            note: tr.note,
+            duration: tr.duration,
+            sectionId: newSectionId,
+          });
+        }
+      }
+    },
+    [rt, sections, tracks],
+  );
+
+  const handleAssignSection = useCallback(
+    (trackId: string, sectionId: string | null) => {
+      void rt.moveTrackToSection(trackId, sectionId);
+    },
+    [rt],
+  );
+
+  const handleSaveTrim = useCallback(
+    (id: string, startAt: number | null, endAt: number | null) => {
+      void rt.updateTrack(id, { startAt, endAt });
+      flash(t.trimSaved);
+    },
+    [flash, rt, t.trimSaved],
+  );
+
+  const handleRenamePlaylist = useCallback(
+    (name: string) => {
+      rt.setName(name);
+    },
+    [rt],
+  );
 
   function moveTrack(fromId: string, toId: string, pos: DropPos) {
-    setTracks((prev) => {
-      const from = prev.findIndex((x) => x.id === fromId);
-      const to = prev.findIndex((x) => x.id === toId);
-      if (from < 0 || to < 0 || from === to) return prev;
-      const next = prev.slice();
-      const [moved] = next.splice(from, 1);
-      let insertAt = next.findIndex((x) => x.id === toId);
-      if (insertAt < 0) insertAt = next.length;
-      if (pos === "below") insertAt += 1;
-      next.splice(insertAt, 0, moved);
-      return next;
-    });
+    if (pos == null) return;
+    void rt.moveTrack(fromId, toId, pos);
   }
 
+  /** Drop a track onto a section header (or into an empty section). */
+  function dropOnSection(fromId: string, sectionId: string | null) {
+    void rt.moveTrackToSection(fromId, sectionId);
+  }
+
+  const handleClearAllRequest = useCallback(() => {
+    setDialog({ kind: "confirm-clear" });
+  }, []);
+
   const handleClearAll = useCallback(async () => {
-    if (!confirm(t.confirmClear)) return;
-    await clearBlobs();
+    // Local cleanup first (blobs/object URLs live on this device)
+    const uploadIds = tracks
+      .filter((tr) => tr.source === "upload")
+      .map((tr) => tr.id);
+    for (const id of uploadIds) {
+      await deleteBlob(id).catch(() => {});
+    }
     Object.values(audioUrlCache.current).forEach((u) => URL.revokeObjectURL(u));
     audioUrlCache.current = {};
     stopPlayback();
     setCurrentId(null);
-    setTracks([]);
-  }, [stopPlayback, t.confirmClear]);
+    await rt.clearAllTracks();
+  }, [rt, stopPlayback, t.confirmClear, tracks]);
 
   /* ── Import / Export ───────────────────────────────────── */
   const handleExport = useCallback(() => {
@@ -388,28 +684,29 @@ export default function PlaylistApp() {
       try {
         const text = await f.text();
         const data = JSON.parse(text) as ExportedPlaylist;
-        if (data.name) setPlaylistName(data.name);
+        if (data.name) rt.setName(data.name);
         if (Array.isArray(data.tracks)) {
-          const incoming: YouTubeTrack[] = data.tracks
-            .filter((x) => x.source === "youtube" && x.youtubeId)
-            .map((x) => ({
-              id: uid(),
+          let count = 0;
+          for (const x of data.tracks) {
+            if (x.source !== "youtube" || !x.youtubeId) continue;
+            await rt.addTrack({
               source: "youtube",
               title: x.title || "Untitled",
               youtubeId: x.youtubeId,
               url: x.url,
               duration: x.duration ?? null,
               note: x.note,
-            }));
-          setTracks((prev) => [...prev, ...incoming]);
-          flash(`+ ${incoming.length} ${t.tracks}`);
+            });
+            count += 1;
+          }
+          flash(`+ ${count} ${t.tracks}`);
         }
       } catch {
         alert(t.importErr);
       }
     };
     inp.click();
-  }, [flash, t.importErr, t.tracks]);
+  }, [flash, rt, t.importErr, t.tracks]);
 
   /* ── Playback engine ───────────────────────────────────── */
 
@@ -456,10 +753,22 @@ export default function PlaylistApp() {
     if (ytPollRef.current) window.clearInterval(ytPollRef.current);
     setPosition(0);
 
+    const startAt =
+      typeof track.startAt === "number" && Number.isFinite(track.startAt) && track.startAt > 0
+        ? track.startAt
+        : undefined;
+    const endAt =
+      typeof track.endAt === "number" && Number.isFinite(track.endAt) && track.endAt > 0
+        ? track.endAt
+        : undefined;
+    endAtRef.current = endAt ?? null;
+
     if (track.source === "upload") {
       (async () => {
         const url = await getAudioUrl(track);
         if (!url) {
+          // Remote-uploaded track without a local blob — surface a
+          // helpful message rather than silently failing.
           flash(t.audioMissing);
           return;
         }
@@ -467,6 +776,16 @@ export default function PlaylistApp() {
         if (!a) return;
         a.src = url;
         a.volume = muted ? 0 : volume;
+        const seekToStart = () => {
+          if (startAt != null) {
+            try {
+              a.currentTime = startAt;
+            } catch {
+              /* ignore */
+            }
+          }
+        };
+        a.addEventListener("loadedmetadata", seekToStart, { once: true });
         try {
           await a.play();
           setIsPlaying(true);
@@ -489,6 +808,8 @@ export default function PlaylistApp() {
               rel: 0,
               playsinline: 1,
               disablekb: 1,
+              start: startAt,
+              end: endAt,
             },
             events: {
               onReady: (e: { target: YTPlayerInstance }) => {
@@ -511,11 +832,10 @@ export default function PlaylistApp() {
                       setDuration(d);
                       const trkId = currentIdRef.current;
                       if (trkId) {
-                        setTracks((prev) =>
-                          prev.map((x) =>
-                            x.id === trkId && !x.duration ? { ...x, duration: d } : x,
-                          ),
-                        );
+                        const cur = tracks.find((x) => x.id === trkId);
+                        if (cur && !cur.duration) {
+                          void rt.updateTrack(trkId, { duration: d });
+                        }
                       }
                     }
                   } catch {
@@ -526,7 +846,11 @@ export default function PlaylistApp() {
             },
           });
         } else {
-          ytPlayerRef.current.loadVideoById(track.youtubeId);
+          ytPlayerRef.current.loadVideoById({
+            videoId: track.youtubeId,
+            startSeconds: startAt,
+            endSeconds: endAt,
+          });
           ytPlayerRef.current.setVolume(Math.round((muted ? 0 : volume) * 100));
           startYTPoll();
         }
@@ -545,18 +869,23 @@ export default function PlaylistApp() {
     if (audioRef.current) return;
     const a = new Audio();
     a.preload = "metadata";
-    a.addEventListener("timeupdate", () => setPosition(a.currentTime));
+    a.addEventListener("timeupdate", () => {
+      setPosition(a.currentTime);
+      const end = endAtRef.current;
+      if (end != null && a.currentTime >= end) {
+        a.pause();
+        setIsPlaying(false);
+        handleTrackEndedRef.current();
+      }
+    });
     a.addEventListener("loadedmetadata", () => {
       const d = a.duration;
       if (Number.isFinite(d) && d > 0) {
         setDuration(d);
         const trkId = currentIdRef.current;
         if (trkId) {
-          setTracks((prev) =>
-            prev.map((x) =>
-              x.id === trkId && !x.duration ? { ...x, duration: d } : x,
-            ),
-          );
+          // Persist newly-probed duration so other clients see it too
+          void rt.updateTrack(trkId, { duration: d });
         }
       }
     });
@@ -567,6 +896,7 @@ export default function PlaylistApp() {
       handleTrackEndedRef.current();
     });
     audioRef.current = a;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Live volume update
@@ -608,35 +938,52 @@ export default function PlaylistApp() {
     }
   }, [currentId, tracks]);
 
-  function nextIndex(currIdx: number, direction: 1 | -1): number {
-    if (tracks.length === 0) return -1;
+  function nextIndex(list: Track[], currIdx: number, direction: 1 | -1): number {
+    if (list.length === 0) return -1;
     if (shuffle && direction > 0) {
-      if (tracks.length === 1) return 0;
+      if (list.length === 1) return 0;
       let n: number;
       do {
-        n = Math.floor(Math.random() * tracks.length);
+        n = Math.floor(Math.random() * list.length);
       } while (n === currIdx);
       return n;
     }
     let n = currIdx + direction;
-    if (n < 0) n = tracks.length - 1;
-    if (n >= tracks.length) n = 0;
+    if (n < 0) n = list.length - 1;
+    if (n >= list.length) n = 0;
     return n;
   }
 
+  /** What plays after the current track ends (respects shuffle/repeat).
+   *  Used by BottomPlayer's "Next up" preview. Doesn't predict shuffle's
+   *  exact pick — shows the next sequential as a stand-in when shuffle is
+   *  on, marking that the order is randomised. */
+  const nextUpTrack: Track | null = useMemo(() => {
+    if (orderedTracks.length === 0) return null;
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    if (i < 0) return orderedTracks[0];
+    if (repeat) return orderedTracks[i];
+    let n = i + 1;
+    if (n >= orderedTracks.length) {
+      if (orderedTracks.length === 1) return null;
+      n = 0; // wraps
+    }
+    return orderedTracks[n];
+  }, [orderedTracks, currentId, repeat]);
+
   const handleNext = useCallback(() => {
-    const i = tracks.findIndex((x) => x.id === currentId);
-    const n = nextIndex(i, 1);
-    if (n >= 0) setCurrentId(tracks[n].id);
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    const n = nextIndex(orderedTracks, i, 1);
+    if (n >= 0) setCurrentId(orderedTracks[n].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, tracks, shuffle]);
+  }, [currentId, orderedTracks, shuffle]);
 
   const handlePrev = useCallback(() => {
-    const i = tracks.findIndex((x) => x.id === currentId);
-    const n = nextIndex(i, -1);
-    if (n >= 0) setCurrentId(tracks[n].id);
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    const n = nextIndex(orderedTracks, i, -1);
+    if (n >= 0) setCurrentId(orderedTracks[n].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, tracks, shuffle]);
+  }, [currentId, orderedTracks, shuffle]);
 
   const handleTrackEnded = useCallback(() => {
     if (repeat) {
@@ -691,9 +1038,44 @@ export default function PlaylistApp() {
     [currentId, handlePlayPause],
   );
 
+  /** Hero primary-play button: if nothing's queued, start with first ordered track. */
+  const handlePrimaryPlay = useCallback(() => {
+    if (currentId) {
+      handlePlayPause();
+      return;
+    }
+    if (orderedTracks.length > 0) setCurrentId(orderedTracks[0].id);
+  }, [currentId, handlePlayPause, orderedTracks]);
+
+  /** Section play: jump to that section's first track. */
+  const handlePlaySection = useCallback(
+    (sectionId: string | null) => {
+      const list = orderedTracks.filter(
+        (tr) => (tr.sectionId ?? null) === sectionId,
+      );
+      if (list.length === 0) return;
+      const first = list[0];
+      if (first.id === currentId) handlePlayPause();
+      else setCurrentId(first.id);
+    },
+    [orderedTracks, currentId, handlePlayPause],
+  );
+
+  function registerSectionRef(id: string, el: HTMLElement | null) {
+    sectionRefs.current[id] = el;
+  }
+  function scrollToSection(id: string) {
+    const el = sectionRefs.current[id];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   /* ── Drag-and-drop ─────────────────────────────────────── */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState<DropPos>(null);
+  /** Section the dragged track is hovering over (`null` = Unassigned). */
+  const [dragOverSection, setDragOverSection] = useState<
+    string | null | "none"
+  >("none");
   const dragIdRef = useRef<string | null>(null);
 
   function onDragStart(e: React.DragEvent, id: string) {
@@ -727,25 +1109,84 @@ export default function PlaylistApp() {
     dragIdRef.current = null;
     setDragOverId(null);
     setDropPos(null);
+    setDragOverSection("none");
   }
 
-  /* ── Keyboard shortcut: space toggles play ──────────────── */
+  function onSectionDragOver(e: React.DragEvent, sectionId: string | null) {
+    if (!dragIdRef.current) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverSection(sectionId);
+  }
+  function onSectionDrop(e: React.DragEvent, sectionId: string | null) {
+    e.preventDefault();
+    const fromId = dragIdRef.current;
+    if (!fromId) return;
+    // If the actual drop target is a TrackItem inside, onDrop already
+    // handled it; only act when this fires without a track drop.
+    if (!dragOverId) {
+      dropOnSection(fromId, sectionId);
+    }
+    dragIdRef.current = null;
+    setDragOverSection("none");
+    setDragOverId(null);
+    setDropPos(null);
+  }
+
+  /* Tracks grouped by section, in section order. */
+  const tracksBySection = useMemo<Record<string, Track[]>>(() => {
+    const groups: Record<string, Track[]> = {};
+    for (const sec of sections) groups[sec.id] = [];
+    const unassigned: Track[] = [];
+    for (const tr of tracks) {
+      const sid = tr.sectionId;
+      if (sid && groups[sid]) groups[sid].push(tr);
+      else unassigned.push(tr);
+    }
+    groups["__unassigned__"] = unassigned;
+    return groups;
+  }, [tracks, sections]);
+
+  /* ── DJ keyboard shortcuts ───────────────────────────────
+        Space → play/pause
+        ←     → previous track   (→ in RTL)
+        →     → next track       (← in RTL)
+        M     → toggle mute
+        Bail when focus is in a text input / contentEditable. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== " " && e.code !== "Space") return;
       const el = document.activeElement as HTMLElement | null;
       if (
         el &&
-        (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
       ) {
         return;
       }
-      e.preventDefault();
-      handlePlayPause();
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handlePlayPause();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        lang === "ar" ? handleNext() : handlePrev();
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        lang === "ar" ? handlePrev() : handleNext();
+        return;
+      }
+      if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setMuted((m) => !m);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePlayPause]);
+  }, [handlePlayPause, handleNext, handlePrev, lang]);
 
   /* ── Derived ──────────────────────────────────────────── */
   const totalSeconds = useMemo(
@@ -757,180 +1198,307 @@ export default function PlaylistApp() {
     [tracks],
   );
 
+  // handleAssignSection is exposed via the realtime hook for future
+  // use (e.g. SectionToolbar drag-into-section). Suppress unused-var.
+  void handleAssignSection;
+  void loaded;
+
+  /* ── Memoised transport toggles ─────────────────────────
+     Stable function identities keep the memoised BottomPlayer + Sidebar
+     from re-rendering on every state tick. */
+  const handleToggleLang = useCallback(() => {
+    setLang((l) => (l === "ar" ? "en" : "ar"));
+  }, []);
+  const handleOpenTimeline = useCallback(() => setTimelineOpen(true), []);
+  const handleCloseTimeline = useCallback(() => setTimelineOpen(false), []);
+  const handleOpenTasks = useCallback(() => setTasksOpen(true), []);
+  const handleCloseTasks = useCallback(() => setTasksOpen(false), []);
+  const handleVolumeChange = useCallback((v: number) => {
+    setVolume(v);
+    setMuted(false);
+  }, [setVolume]);
+  const handleToggleMute = useCallback(() => setMuted((m) => !m), []);
+  const handleToggleRepeat = useCallback(
+    () => setRepeat(!repeat),
+    [repeat, setRepeat],
+  );
+  const handleToggleShuffle = useCallback(
+    () => setShuffle(!shuffle),
+    [shuffle, setShuffle],
+  );
+  const handleToggleAutoplay = useCallback(
+    () => setAutoplay(!autoplay),
+    [autoplay, setAutoplay],
+  );
+  const handleOpenTrim = useCallback((id: string) => setTrimEditId(id), []);
+  const handleCloseTrim = useCallback(() => setTrimEditId(null), []);
+  const handleCloseValidation = useCallback(
+    () => setValidationOpen(false),
+    [],
+  );
+
   /* ── Render ───────────────────────────────────────────── */
+  const hasYouTubeTracks = tracks.some((x) => x.source === "youtube");
+  const unassigned = tracksBySection["__unassigned__"] ?? [];
+
   return (
-    <div className="min-h-screen relative" dir={dirOf(lang)}>
-      <div
-        className="fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% 0%, #F4ECDF 0%, #EBE0CE 50%, #E5D5BC 100%)",
-        }}
-        aria-hidden
-      />
-
-      <div className="relative">
-        <div
-          className="mx-auto max-w-7xl px-6 py-8"
-          style={{ paddingBottom: 160 }}
-        >
-          <div className="stage-card paper-bg p-2">
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <Header
-                playlistName={playlistName}
-                onRename={handleRenamePlaylist}
-                t={t}
-                lang={lang}
-                onToggleLang={() =>
-                  setLang((l) => (l === "ar" ? "en" : "ar"))
-                }
-                onImport={handleImport}
-                onExport={handleExport}
-                onSamples={handleLoadSamples}
-                onClearAll={handleClearAll}
-                hasTracks={tracks.length > 0}
-              />
-
-              <div
-                className="px-8 pb-8 grid grid-cols-12 gap-6"
-                style={{ minHeight: 480 }}
-              >
-                <div className="col-span-12 lg:col-span-4">
-                  <AddPanel
-                    lang={lang}
-                    t={t}
-                    onAddFiles={handleAddFiles}
-                    onAddYouTube={handleAddYouTube}
-                  />
-                </div>
-
-                <div className="col-span-12 lg:col-span-8">
-                  <div className="stage-card p-6">
-                    <div className="flex items-baseline justify-between mb-4 px-1">
-                      <div className="label-tracked">
-                        {tracks.length}{" "}
-                        {tracks.length === 1 ? t.track : t.tracks}
-                      </div>
-                      <div className="label-tracked">
-                        {t.total} ·{" "}
-                        <span className="tnum" style={{ color: "#3A2C20" }}>
-                          {fmtTime(totalSeconds)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {tracks.length === 0 ? (
-                      <div className="text-center py-16 px-6">
-                        <div
-                          className="inline-flex items-center justify-center rounded-full mb-4"
-                          style={{
-                            width: 72,
-                            height: 72,
-                            background: "rgba(216,146,116,0.10)",
-                            border: "0.5px solid rgba(216,146,116,0.30)",
-                          }}
-                        >
-                          <span style={{ color: "#D89274", fontSize: 28 }}>♪</span>
-                        </div>
-                        <div
-                          className="font-italiana text-[28px]"
-                          style={{ color: "#D89274" }}
-                        >
-                          {t.addFirst}
-                        </div>
-                        <div
-                          className="font-cormorant text-[16px] mt-2 max-w-md mx-auto"
-                          style={{
-                            color: "#6B4A35",
-                            lineHeight: 1.5,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {t.emptyHint}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {tracks.map((tr, i) => (
-                          <TrackItem
-                            key={tr.id}
-                            track={tr}
-                            idx={i}
-                            isCurrent={tr.id === currentId}
-                            isPlaying={tr.id === currentId && isPlaying}
-                            t={t}
-                            onPlay={handlePlay}
-                            onDelete={handleDelete}
-                            onRename={handleRename}
-                            onDragStart={onDragStart}
-                            onDragOver={onDragOver}
-                            onDragLeave={onDragLeave}
-                            onDrop={onDrop}
-                            dropPos={dragOverId === tr.id ? dropPos : null}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-end gap-2 text-xs text-brownSoft">
-                    <label className="inline-flex items-center gap-2 select-none cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoplay}
-                        onChange={(e) => setAutoplay(e.target.checked)}
-                        style={{ accentColor: "#D89274" }}
-                      />
-                      <span style={{ letterSpacing: "0.05em" }}>{t.autoplay}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-6">
-            <div
-              className="font-amiri text-[15px]"
-              style={{ color: "#D89274" }}
-            >
-              {t.footerNote}
-            </div>
-          </div>
-        </div>
-
-        <PlayerBar
-          tracks={tracks}
-          currentId={currentId}
-          isPlaying={isPlaying}
-          position={position}
-          duration={duration}
-          volume={volume}
-          muted={muted}
-          repeat={repeat}
-          shuffle={shuffle}
+    <UndoContextProvider value={undoCtl}>
+    <EditModeProvider>
+    <LockModeProvider>
+    <EditModeToolbar />
+    <AppShell
+      lang={lang}
+      sidebar={
+        <Sidebar
           lang={lang}
           t={t}
-          onPlayPause={handlePlayPause}
-          onPrev={handlePrev}
-          onNext={handleNext}
-          onSeek={handleSeek}
-          onVolume={(v) => {
-            setVolume(v);
-            setMuted(false);
-          }}
-          onToggleMute={() => setMuted((m) => !m)}
-          onToggleRepeat={() => setRepeat((r) => !r)}
-          onToggleShuffle={() => setShuffle((s) => !s)}
+          playlistName={playlistName}
+          totalSeconds={totalSeconds}
+          tracks={tracks}
+          sections={sections}
+          hasYouTubeTracks={hasYouTubeTracks}
+          validating={validating}
+          realtimeStatus={realtimeStatus}
+          onToggleLang={handleToggleLang}
+          onImport={handleImport}
+          onExport={handleExport}
+          onSamples={handleLoadSamples}
+          onValidate={handleValidate}
+          onClearAll={handleClearAllRequest}
+          onAddSection={handleAddSection}
+          onScrollToSection={scrollToSection}
+          onOpenTimeline={handleOpenTimeline}
+          onOpenTasks={handleOpenTasks}
+          onOpenClipsWorkbench={handleOpenClipsWorkbench}
+        />
+      }
+      bottomPlayer={
+        <EditableBlock editKey="player.dock" label="Bottom player dock">
+          <BottomPlayer
+            lang={lang}
+            t={t}
+            tracks={orderedTracks}
+            currentId={currentId}
+            nextTrack={nextUpTrack}
+            isPlaying={isPlaying}
+            position={position}
+            duration={duration}
+            volume={volume}
+            muted={muted}
+            shuffle={shuffle}
+            repeat={repeat}
+            autoplay={autoplay}
+            onPlayPause={handlePlayPause}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            onSeek={handleSeek}
+            onVolume={handleVolumeChange}
+            onToggleMute={handleToggleMute}
+            onToggleRepeat={handleToggleRepeat}
+            onToggleShuffle={handleToggleShuffle}
+            onToggleAutoplay={handleToggleAutoplay}
+          />
+        </EditableBlock>
+      }
+    >
+      <div className="flex flex-col gap-10">
+        <EditableBlock editKey="hero" label="Hero">
+        <PlaylistHero
+          lang={lang}
+          t={t}
+          playlistName={playlistName}
+          onRenamePlaylist={handleRenamePlaylist}
+          tracks={tracks}
+          totalSeconds={totalSeconds}
+          hasCurrent={!!currentId}
+          isPlaying={isPlaying}
+          shuffle={shuffle}
+          repeat={repeat}
+          onPrimaryPlay={handlePrimaryPlay}
+          onToggleShuffle={handleToggleShuffle}
+          onToggleRepeat={handleToggleRepeat}
+          onMore={handleImport}
+          hasYouTubeTracks={hasYouTubeTracks}
+        />
+        </EditableBlock>
+
+        {/* At-a-glance recap of every feature — taps jump straight in. */}
+        <HomeRecap
+          lang={lang}
+          t={t}
+          tracks={tracks}
+          totalSeconds={totalSeconds}
+          sections={sections}
+          onOpenTimeline={handleOpenTimeline}
+          onOpenTasks={handleOpenTasks}
         />
 
-        {/* Hidden YouTube host */}
-        <div className="youtube-host">
-          <div id="yt-host" />
-        </div>
+        {/* Composer — upload + YouTube. Hidden in wedding-day Lock mode
+            so the laptop is safe to hand to anyone during the ceremony. */}
+        <UnlockedOnly>
+          <EditableBlock editKey="composer" label="Composer (upload + YouTube)">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
+            <UploadPanel
+              t={t}
+              onAddFiles={handleAddFiles}
+              progress={uploadProgress}
+            />
+            <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
+          </div>
+          </EditableBlock>
+        </UnlockedOnly>
 
-        <Toast message={toast} />
+        {/* Track list or empty state */}
+        {tracks.length === 0 ? (
+          <EmptyState t={t} onSamples={handleLoadSamples} />
+        ) : (
+          <TrackList
+            lang={lang}
+            t={t}
+            sections={sections}
+            tracksBySection={tracksBySection}
+            unassigned={unassigned}
+            currentId={currentId}
+            isPlaying={isPlaying}
+            validation={validation}
+            onPlayTrack={handlePlay}
+            onDeleteTrack={handleDelete}
+            onRenameTrack={handleRename}
+            onEditTrim={handleOpenTrim}
+            onPlaySection={handlePlaySection}
+            onRenameSection={handleRenameSection}
+            onDeleteSection={handleDeleteSection}
+            onMoveSection={handleMoveSection}
+            onDuplicateSection={handleDuplicateSection}
+            onReorderSections={handleReorderSections}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onSectionDragOver={onSectionDragOver}
+            onSectionDrop={onSectionDrop}
+            dragOverId={dragOverId}
+            dropPos={dropPos}
+            dragOverSection={dragOverSection}
+            registerSectionRef={registerSectionRef}
+            onAssignSection={handleAssignSection}
+          />
+        )}
+
       </div>
-    </div>
+
+      {/* Hidden YouTube host */}
+      <div className="youtube-host">
+        <div id="yt-host" />
+      </div>
+
+      <Toast message={toast} />
+
+      {/* Dynamic-imported modals — only mount once the user opens them
+          so their JS doesn't ride the initial bundle. */}
+      {validationOpen && (
+        <ValidationModal
+          open={validationOpen}
+          onClose={handleCloseValidation}
+          tracks={tracks.filter((x): x is YouTubeTrack => x.source === "youtube")}
+          results={validation}
+          progress={validationProgress}
+          validating={validating}
+          t={t}
+          lang={lang}
+        />
+      )}
+
+      {trimEditId != null && (
+        <TrimModal
+          open={trimEditId != null}
+          track={trimEditId ? tracks.find((x) => x.id === trimEditId) ?? null : null}
+          currentPosition={position}
+          positionIsForThisTrack={trimEditId === currentId}
+          onClose={handleCloseTrim}
+          onSave={handleSaveTrim}
+          t={t}
+          lang={lang}
+        />
+      )}
+
+      {clipsWorkbenchOpen && (
+        <ClipsWorkbench
+          open={clipsWorkbenchOpen}
+          onClose={handleCloseClipsWorkbench}
+          tracks={tracks}
+          lang={lang}
+          t={t}
+          getBlob={getBlob}
+          onMergeComplete={handleMergeComplete}
+        />
+      )}
+
+      <PromptDialog
+        open={dialog.kind === "add-section"}
+        title={t.addSection}
+        description={t.renameSection}
+        placeholder={t.sectionUnassigned}
+        confirmLabel={t.add}
+        cancelLabel={t.cancel}
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onSubmit={(label) => {
+          void rt.addSection(label);
+          setDialog({ kind: "none" });
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
+      <PromptDialog
+        open={dialog.kind === "rename-section"}
+        title={t.renameSection}
+        defaultValue={dialog.kind === "rename-section" ? dialog.current : ""}
+        confirmLabel={t.save}
+        cancelLabel={t.cancel}
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onSubmit={(label) => {
+          if (dialog.kind === "rename-section") {
+            void rt.renameSection(dialog.id, label);
+          }
+          setDialog({ kind: "none" });
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
+      <ConfirmDialog
+        open={dialog.kind === "confirm-clear"}
+        title={t.clearAll}
+        description={t.confirmClear}
+        confirmLabel={t.clearAll}
+        cancelLabel={t.cancel}
+        destructive
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onConfirm={() => {
+          void handleClearAll();
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
+      {timelineOpen && (
+        <Timeline
+          lang={lang}
+          t={t}
+          onClose={handleCloseTimeline}
+        />
+      )}
+
+      {tasksOpen && (
+        <Tasks
+          lang={lang}
+          t={t}
+          onClose={handleCloseTasks}
+        />
+      )}
+
+      <UndoToast />
+    </AppShell>
+    </LockModeProvider>
+    </EditModeProvider>
+    </UndoContextProvider>
   );
 }

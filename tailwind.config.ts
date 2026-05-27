@@ -8,30 +8,77 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#FAF5EC",
-        ivory: "#F4ECDF",
-        ivoryDeep: "#EBE0CE",
-        champagne: "#E5D5BC",
-        champagne2: "#D9C5A5",
-        peachSoft: "#F2D4BE",
-        peach: "#E9B89A",
-        peachDeep: "#D89274",
-        rose: "#C97B5B",
-        blush: "#F6DDCB",
-        ink: "#3A2C20",
-        brown: "#6B4A35",
-        brownSoft: "#8C6A4F",
-        taupe: "#A38A72",
-        gold: "#B8956A",
-        goldDeep: "#957251",
-        goldSoft: "#D9BE96",
+        // Warm sepia darks — harmonise with peach instead of fighting it
+        bg: {
+          base: "#1a1310",
+          deep: "#221a14",
+          panel: "#2a201a",
+          surface: "#342820",
+          raised: "#3e2f25",
+          hover: "#4a382a",
+        },
+        line: {
+          subtle: "rgba(255, 255, 255, 0.06)",
+          soft: "rgba(255, 255, 255, 0.10)",
+          gold: "rgba(216, 146, 116, 0.35)",
+          peach: "rgba(216, 146, 116, 0.35)",
+        },
+        // Single monochrome accent — peach pulled from the bride's
+        // logo. `gold.*` kept as alias so older Tailwind utility
+        // classes (`bg-gold-400`, etc.) still paint correctly.
+        gold: {
+          50: "#fde6d4",
+          100: "#fde6d4",
+          200: "#f7d6c0",
+          300: "#ecb89a",
+          400: "#d89274",
+          500: "#b06b4a",
+          600: "#8e5538",
+          700: "#5c3623",
+        },
+        peach: {
+          100: "#fde6d4",
+          200: "#f7d6c0",
+          300: "#ecb89a",
+          400: "#d89274",
+          500: "#b06b4a",
+          600: "#8e5538",
+          glow: "rgba(216, 146, 116, 0.28)",
+        },
+        // Emerald aliased to deep peach so any leftover utility
+        // classes don't introduce a foreign hue.
+        emerald: {
+          accent: "#b06b4a",
+          glow: "rgba(216, 146, 116, 0.14)",
+        },
+        ink: {
+          50: "#fafafa",
+          200: "#e5e5e5",
+          300: "#d4d4d4",
+          400: "#a3a3a3",
+          500: "#737373",
+          600: "#525252",
+        },
       },
       fontFamily: {
-        italiana: ["Italiana", "serif"],
-        cinzel: ["Cinzel", "serif"],
-        cormorant: ['"Cormorant Garamond"', "serif"],
-        amiri: ["Amiri", "serif"],
-        markazi: ['"Markazi Text"', "Amiri", "serif"],
+        display: ["var(--font-cormorant)", '"Cormorant Garamond"', "Georgia", "serif"],
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        arabic: ["var(--font-tajawal)", '"Tajawal"', '"Markazi Text"', "sans-serif"],
+        cinzel: ["var(--font-cinzel)", "Cinzel", "serif"],
+        italiana: ["var(--font-italiana)", "Italiana", "serif"],
+        amiri: ["var(--font-amiri)", "Amiri", "serif"],
+        markazi: ["var(--font-markazi)", '"Markazi Text"', "serif"],
+      },
+      boxShadow: {
+        card: "0 10px 30px -10px rgba(0,0,0,0.7)",
+        gold: "0 18px 40px -16px rgba(216,146,116,0.45)",
+        peach: "0 18px 40px -16px rgba(216,146,116,0.45)",
+      },
+      backgroundImage: {
+        "hero-warm":
+          "radial-gradient(ellipse at 0% 0%, rgba(216,146,116,0.22), transparent 55%), radial-gradient(ellipse at 100% 0%, rgba(216,146,116,0.12), transparent 60%), linear-gradient(180deg, #242424 0%, #121212 70%)",
+        "app-vignette":
+          "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(216,146,116,0.08), transparent 60%), radial-gradient(ellipse 60% 40% at 0% 100%, rgba(216,146,116,0.06), transparent 60%), linear-gradient(180deg, #050505 0%, #0a0a0a 100%)",
       },
     },
   },

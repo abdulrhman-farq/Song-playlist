@@ -22,6 +22,10 @@ function Svg({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
+      // Icons are decorative; the surrounding button/link carries the
+      // accessible name. Hide from AT and skip from the focus order.
+      aria-hidden="true"
+      focusable="false"
       {...rest}
     >
       {children}
@@ -151,6 +155,73 @@ export const IconShuffle = (p: IconProps) => (
 export const IconRepeat = (p: IconProps) => (
   <Svg {...p}>
     <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" />
+  </Svg>
+);
+export const IconShield = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
+    <path d="M9 12l2 2 4-4" />
+  </Svg>
+);
+export const IconWarn = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3l10 17H2L12 3z" />
+    <path d="M12 10v4" />
+    <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="currentColor" />
+  </Svg>
+);
+export const IconClock = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Svg>
+);
+export const IconFolder = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
+  </Svg>
+);
+export const IconArrowUp = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="6 14 12 8 18 14" />
+  </Svg>
+);
+export const IconArrowDown = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="6 10 12 16 18 10" />
+  </Svg>
+);
+export const IconHome = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" />
+  </Svg>
+);
+export const IconLibrary = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 4v16M9 4v16M14 5l5 14" />
+  </Svg>
+);
+export const IconMore = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="18" cy="12" r="1.4" fill="currentColor" />
+  </Svg>
+);
+export const IconSearch = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.3-4.3" />
+  </Svg>
+);
+export const IconHeart = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 21s-7-4.5-9.5-9C1 8.5 3 5 7 5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 4 0 6 3.5 4.5 7C19 16.5 12 21 12 21z" />
+  </Svg>
+);
+export const IconMenu = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
   </Svg>
 );
 

@@ -1,4 +1,4 @@
-import type { Language, PersistedSettings, Track } from "@/types";
+import type { Language, PersistedSettings, PlaylistSection, Track } from "@/types";
 
 const META_KEY = "wedding-playlist:v1";
 const LANG_KEY = "wp:lang";
@@ -121,6 +121,9 @@ export function sanitizeTracksForSave(tracks: Track[]): Track[] {
           title: tr.title,
           duration: tr.duration,
           note: tr.note,
+          startAt: tr.startAt,
+          endAt: tr.endAt,
+          sectionId: tr.sectionId,
           blobName: tr.blobName,
           mimeType: tr.mimeType,
           fileSize: tr.fileSize,
@@ -131,6 +134,9 @@ export function sanitizeTracksForSave(tracks: Track[]): Track[] {
           title: tr.title,
           duration: tr.duration,
           note: tr.note,
+          startAt: tr.startAt,
+          endAt: tr.endAt,
+          sectionId: tr.sectionId,
           youtubeId: tr.youtubeId,
           url: tr.url,
         },
