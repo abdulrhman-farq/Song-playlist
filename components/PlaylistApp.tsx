@@ -1317,17 +1317,6 @@ export default function PlaylistApp() {
           />
         )}
 
-        <EditableBlock editKey="footerNote" label="Footer note">
-        <div className="text-center pt-4 pb-2">
-          <EditableText
-            as="div"
-            editKey="footerNote"
-            fallback={t.footerNote}
-            className="font-arabic-display"
-            style={{ color: "var(--gold-400)", fontSize: 15 }}
-          />
-        </div>
-        </EditableBlock>
       </div>
 
       {/* Hidden YouTube host */}

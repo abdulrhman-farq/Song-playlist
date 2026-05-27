@@ -3,6 +3,8 @@
 import { memo, useEffect, useRef, useState } from "react";
 import EditableText from "@/components/EditableText";
 import {
+  IconArrowDown,
+  IconArrowUp,
   IconMusic,
   IconMute,
   IconNext,
@@ -92,16 +94,87 @@ function BottomPlayerImpl({
   const [seekValue, setSeekValue] = useState<number | null>(null);
   const dragRef = useRef(false);
 
+  // Collapsed = compact floating pill instead of the full transport bar.
+  // Persisted to localStorage so the choice survives reload — guests who
+  // want full screen for the playlist won't have the player re-spring up
+  // every refresh.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("wp-player-collapsed") === "1") {
+        setCollapsed(true);
+      }
+    } catch {
+      /* SSR or storage-disabled — ignore */
+    }
+  }, []);
+  function toggleCollapsed(next: boolean) {
+    setCollapsed(next);
+    try {
+      localStorage.setItem("wp-player-collapsed", next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+
   const displayPos = seekValue ?? position ?? 0;
   const progressPct =
     duration > 0 ? Math.min(100, (displayPos / duration) * 100) : 0;
   const volPct = (muted ? 0 : volume) * 100;
 
+  // Collapsed mode — render only a small floating pill at the bottom
+  // edge. Keeps the play/pause + an expand arrow within thumb reach,
+  // but frees the rest of the viewport for the playlist.
+  if (collapsed) {
+    return (
+      <div
+        className="fixed bottom-3 gpu"
+        style={{
+          insetInlineEnd: 12,
+          zIndex: "var(--z-player)" as unknown as number,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 8px 6px 6px",
+          borderRadius: 999,
+          background:
+            "linear-gradient(180deg, rgba(58,44,34,0.92) 0%, rgba(42,32,26,0.96) 100%)",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          border: "1px solid rgba(216, 146, 116, 0.22)",
+          boxShadow: "0 12px 28px -12px rgba(0,0,0,0.6)",
+        }}
+      >
+        <button
+          type="button"
+          className="btn-base btn-play gpu"
+          onClick={onPlayPause}
+          disabled={!current && tracks.length === 0}
+          style={{ width: 34, height: 34 }}
+          title={isPlaying ? t.pause : t.play}
+          aria-label={isPlaying ? t.pause : t.play}
+        >
+          {isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+        </button>
+        <button
+          type="button"
+          className="icon-btn magnet"
+          onClick={() => toggleCollapsed(false)}
+          style={{ width: 28, height: 28 }}
+          title="Show player"
+          aria-label="Show player"
+        >
+          <IconArrowUp size={14} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 gpu"
       style={{
-        padding: "12px 16px 14px",
+        padding: "8px 14px 10px",
         background:
           "linear-gradient(180deg, transparent 0%, rgba(26,19,16,0.88) 28%, rgba(26,19,16,0.96) 100%)",
         backdropFilter: "blur(24px) saturate(180%)",
@@ -110,6 +183,25 @@ function BottomPlayerImpl({
         zIndex: "var(--z-player)" as unknown as number,
       }}
     >
+      {/* Hide button — floats top-right of the bar, collapses the player
+          to a small floating pill until the user expands it again. */}
+      <button
+        type="button"
+        onClick={() => toggleCollapsed(true)}
+        className="icon-btn"
+        style={{
+          position: "absolute",
+          top: 4,
+          insetInlineEnd: 8,
+          width: 24,
+          height: 24,
+          zIndex: 2,
+        }}
+        title="Hide player"
+        aria-label="Hide player"
+      >
+        <IconArrowDown size={13} />
+      </button>
       {/* Ambient gold haze when actively playing */}
       {isPlaying && current && (
         <div
