@@ -169,13 +169,13 @@ export default function Sidebar({
           attribute. */}
       <EditableBlock editKey="sidebar.nav" label="Sidebar nav">
       <nav aria-label="Primary" className="px-3 mt-3 space-y-1">
-        <a href="#hero" className="nav-row" aria-current="page">
+        <a href="#hero" className="nav-row" aria-current="page" onClick={close}>
           <IconHome size={18} />
           <span>
             <EditableText editKey="sidebar.nav.home" fallback="Home" />
           </span>
         </a>
-        <a href="#playlist" className="nav-row">
+        <a href="#playlist" className="nav-row" onClick={close}>
           <IconLibrary size={18} />
           <span>
             <EditableText
