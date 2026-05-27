@@ -466,12 +466,11 @@ function TaskRow({
           </div>
         )}
 
-        {/* Due chip — opens the native datetime picker on tap. The
-            hidden datetime-local input sits behind the styled chip so
-            the chip stays peach-on-sepia but iOS/Android still show
-            their full calendar + time UI. The original due date stays
-            visible after completion (matching Google Tasks), with a
-            small "Completed …" line appended below. */}
+        {/* Due chip — opens the custom peach-on-sepia DueDatePicker
+            on tap (instead of the OS-default blue calendar). The
+            original due date stays visible after completion (matching
+            Google Tasks), with a small "Completed …" line appended
+            below. */}
         <div className="mt-1.5 flex flex-col gap-1 items-start">
           {entry.due ? (
             <button

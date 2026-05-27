@@ -162,6 +162,10 @@ export const strings = {
     pickerDone: "Done",
     pickerPrevMonth: "Previous month",
     pickerNextMonth: "Next month",
+    toastTrackRemoved: "Track removed",
+    toastSectionRemoved: "Section removed",
+    toastPlaylistCleared: "Playlist cleared",
+    toastTaskDeleted: "Task deleted",
     // Home recap (at-a-glance cards under the hero)
     recapAria: "Quick recap",
     recapPlaylistEyebrow: "PLAYLIST",
@@ -357,6 +361,10 @@ export const strings = {
     pickerDone: "تم",
     pickerPrevMonth: "الشهر السابق",
     pickerNextMonth: "الشهر التالي",
+    toastTrackRemoved: "تم حذف الأغنية",
+    toastSectionRemoved: "تم حذف القسم",
+    toastPlaylistCleared: "تم تفريغ القائمة",
+    toastTaskDeleted: "تم حذف المهمة",
     // Home recap (at-a-glance cards under the hero)
     recapAria: "نظرة سريعة",
     recapPlaylistEyebrow: "البلايلست",

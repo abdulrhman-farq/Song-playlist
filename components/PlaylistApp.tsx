@@ -15,6 +15,8 @@ import BottomPlayer from "@/components/BottomPlayer";
 import Toast from "@/components/Toast";
 import { ConfirmDialog, PromptDialog } from "@/components/Dialog";
 import { LockModeProvider, UnlockedOnly, useLockMode } from "@/lib/lockMode";
+import { UndoContextProvider, useUndoController } from "@/lib/undo";
+import UndoToast from "@/components/UndoToast";
 import EditModeToolbar from "@/components/EditModeToolbar";
 import EditableBlock from "@/components/EditableBlock";
 import EditableText from "@/components/EditableText";
@@ -392,6 +394,11 @@ export default function PlaylistApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks, flash]);
 
+  // Global undo controller — every destructive op (track delete,
+  // section delete, clear all, task delete) pushes a revert closure
+  // onto this controller and the floating UndoToast surfaces it.
+  const undoCtl = useUndoController();
+
   /* ── Stop / teardown ───────────────────────────────────── */
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -416,6 +423,12 @@ export default function PlaylistApp() {
   const handleDelete = useCallback(
     async (id: string) => {
       const tr = tracks.find((x) => x.id === id);
+      // Snapshot before deletion so undo can rebuild the row. Upload
+      // tracks blow up their blob too — those don't get undo since
+      // the audio is irreversibly gone.
+      const wasYouTube = tr?.source === "youtube";
+      const snapshot = tr;
+
       if (tr && tr.source === "upload") {
         await deleteBlob(id).catch(() => {});
         const url = audioUrlCache.current[id];
@@ -429,8 +442,23 @@ export default function PlaylistApp() {
         stopPlayback();
         setCurrentId(null);
       }
+
+      if (snapshot && wasYouTube && snapshot.source === "youtube") {
+        const label = `${t.toastTrackRemoved ?? "Track removed"} · "${snapshot.title}"`;
+        undoCtl.pushUndo(label, () => {
+          void rt.addTrack({
+            title: snapshot.title,
+            source: "youtube",
+            youtubeId: snapshot.youtubeId,
+            url: snapshot.url,
+            note: snapshot.note ?? null,
+            duration: snapshot.duration ?? null,
+            sectionId: snapshot.sectionId ?? null,
+          });
+        });
+      }
     },
-    [currentId, rt, stopPlayback, tracks],
+    [currentId, rt, stopPlayback, tracks, undoCtl, t.toastTrackRemoved],
   );
 
   const handleRename = useCallback(
@@ -456,9 +484,27 @@ export default function PlaylistApp() {
 
   const handleDeleteSection = useCallback(
     (id: string) => {
+      const snap = sections.find((s) => s.id === id);
+      const tracksInSection = tracks
+        .filter((tr) => tr.sectionId === id)
+        .map((tr) => tr.id);
       void rt.removeSection(id);
+      if (snap) {
+        const label = `${t.toastSectionRemoved ?? "Section removed"} · "${snap.label}"`;
+        undoCtl.pushUndo(label, () => {
+          // Recreate the section, then sweep the orphaned tracks
+          // back into it (removeSection unassigns them rather than
+          // deleting, so the IDs are still alive).
+          void (async () => {
+            const newId = await rt.addSection(snap.label);
+            for (const trackId of tracksInSection) {
+              await rt.moveTrackToSection(trackId, newId);
+            }
+          })();
+        });
+      }
     },
-    [rt],
+    [rt, sections, tracks, undoCtl, t.toastSectionRemoved],
   );
 
   const handleMoveSection = useCallback(
@@ -1196,6 +1242,7 @@ export default function PlaylistApp() {
   const unassigned = tracksBySection["__unassigned__"] ?? [];
 
   return (
+    <UndoContextProvider value={undoCtl}>
     <EditModeProvider>
     <LockModeProvider>
     <EditModeToolbar />
@@ -1447,8 +1494,11 @@ export default function PlaylistApp() {
           onClose={handleCloseTasks}
         />
       )}
+
+      <UndoToast />
     </AppShell>
     </LockModeProvider>
     </EditModeProvider>
+    </UndoContextProvider>
   );
 }

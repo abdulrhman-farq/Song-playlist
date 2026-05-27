@@ -99,7 +99,16 @@ export default function Sidebar({
   }
 
   const content = (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full overflow-y-auto"
+      style={{
+        // Reserve room for iOS home indicator + the floating
+        // collapsed player so the bottom actions don't sit under
+        // either of them.
+        paddingBottom: "calc(96px + env(safe-area-inset-bottom, 0px))",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       {/* Brand */}
       <EditableBlock editKey="sidebar.brand" label="Sidebar brand">
       <div className="px-5 py-6 flex items-center gap-3">
@@ -220,10 +229,7 @@ export default function Sidebar({
           <IconPlus size={13} />
         </button>
       </div>
-      <div
-        className="px-3 flex-1 min-h-0 overflow-y-auto space-y-0.5"
-        style={{ minHeight: "20vh" }}
-      >
+      <div className="px-3 space-y-0.5">
         {sections.length === 0 && (
           <div
             className="px-3 text-[12px] italic"
@@ -372,7 +378,7 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="mt-auto px-3 pb-4 space-y-1">
+      <div className="px-3 pb-4 space-y-1">
         {/* Wedding-day Lock toggle — when ON, hides the composer, the
             destructive actions, the edit-page entry, and (in TrackList)
             the rename/delete/drag/trim affordances. */}
