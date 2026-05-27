@@ -156,6 +156,12 @@ export const strings = {
     tasksCompletedPrefix: "Completed",
     confirmDeleteTask: "Delete this task?",
     close: "Close",
+    // Due-date picker
+    pickerTime: "Time",
+    pickerReset: "Reset",
+    pickerDone: "Done",
+    pickerPrevMonth: "Previous month",
+    pickerNextMonth: "Next month",
     // Home recap (at-a-glance cards under the hero)
     recapAria: "Quick recap",
     recapPlaylistEyebrow: "PLAYLIST",
@@ -345,6 +351,12 @@ export const strings = {
     tasksCompletedPrefix: "اكتملت",
     confirmDeleteTask: "حذف هذه المهمة؟",
     close: "إغلاق",
+    // Due-date picker
+    pickerTime: "الوقت",
+    pickerReset: "تفريغ",
+    pickerDone: "تم",
+    pickerPrevMonth: "الشهر السابق",
+    pickerNextMonth: "الشهر التالي",
     // Home recap (at-a-glance cards under the hero)
     recapAria: "نظرة سريعة",
     recapPlaylistEyebrow: "البلايلست",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DueDatePicker from "@/components/DueDatePicker";
 import {
   IconCheck,
   IconClose,
@@ -15,12 +16,7 @@ import {
   newTask,
   saveTasks,
 } from "@/lib/tasksStorage";
-import {
-  formatDue,
-  isOverdue,
-  parseDue,
-  toDatetimeLocalValue,
-} from "@/lib/dueDate";
+import { formatDue, isOverdue, parseDue } from "@/lib/dueDate";
 import type { Strings } from "@/lib/i18n";
 import { dir as dirOf } from "@/lib/i18n";
 import type { Language, TaskDoc, TaskEntry } from "@/types";
@@ -360,11 +356,21 @@ function TaskRow({
   const [draftTitle, setDraftTitle] = useState(entry.title);
   useEffect(() => setDraftTitle(entry.title), [entry.title]);
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
   const dueLabel = formatDue(entry.due, lang);
   const completedLabel = entry.completedAt
     ? formatDue(entry.completedAt, lang)
     : "";
   const overdue = !entry.done && isOverdue(entry.due);
+
+  function openPicker(e: React.MouseEvent) {
+    if (locked) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setAnchorRect(rect);
+    setPickerOpen(true);
+  }
 
   return (
     <div
@@ -468,8 +474,11 @@ function TaskRow({
             small "Completed …" line appended below. */}
         <div className="mt-1.5 flex flex-col gap-1 items-start">
           {entry.due ? (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full text-[12px] relative"
+            <button
+              type="button"
+              onClick={openPicker}
+              disabled={locked}
+              className="inline-flex items-center gap-1.5 rounded-full text-[12px]"
               style={{
                 color: entry.done
                   ? "var(--text-muted)"
@@ -490,47 +499,19 @@ function TaskRow({
             >
               <CalendarGlyph />
               <span>{dueLabel}</span>
-              {!locked && (
-                <input
-                  type="datetime-local"
-                  value={toDatetimeLocalValue(entry.due)}
-                  onChange={(e) => onCommitDue(e.target.value)}
-                  aria-label={t.tasksEditDue}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    cursor: "pointer",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                />
-              )}
-            </span>
+            </button>
           ) : (
             !locked &&
             !entry.done && (
-              <span
-                className="inline-flex items-center gap-1.5 text-[12px] italic relative"
+              <button
+                type="button"
+                onClick={openPicker}
+                className="inline-flex items-center gap-1.5 text-[12px] italic"
                 style={{ color: "var(--text-faint)", cursor: "pointer" }}
               >
                 <CalendarGlyph />
                 <span>{t.tasksAddDue}</span>
-                <input
-                  type="datetime-local"
-                  value=""
-                  onChange={(e) => onCommitDue(e.target.value)}
-                  aria-label={t.tasksAddDue}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    cursor: "pointer",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                />
-              </span>
+              </button>
             )
           )}
 
@@ -544,6 +525,17 @@ function TaskRow({
                 {t.tasksCompletedPrefix}: {completedLabel}
               </span>
             </span>
+          )}
+
+          {pickerOpen && (
+            <DueDatePicker
+              value={entry.due}
+              onChange={(iso) => onCommitDue(iso)}
+              onClose={() => setPickerOpen(false)}
+              lang={lang}
+              t={t}
+              anchorRect={anchorRect}
+            />
           )}
         </div>
       </div>
