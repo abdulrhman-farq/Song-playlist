@@ -209,7 +209,7 @@ export default function Sidebar({
       </div>
       <div
         className="px-3 flex-1 min-h-0 overflow-y-auto space-y-0.5"
-        style={{ maxHeight: "32vh" }}
+        style={{ minHeight: "20vh" }}
       >
         {sections.length === 0 && (
           <div
