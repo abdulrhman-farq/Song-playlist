@@ -33,6 +33,19 @@ const config: Config = {
         amiri: ["Amiri", "serif"],
         markazi: ['"Markazi Text"', "Amiri", "serif"],
       },
+      // Spacing scale — aligns with --space-* tokens.
+      // Tailwind's defaults (1=4, 2=8, 3=12, 4=16, 6=24, 8=32, 12=48)
+      // already match this scale, but we declare it explicitly so the
+      // tokens stay the single source of truth.
+      spacing: {
+        1: "var(--space-1)",
+        2: "var(--space-2)",
+        3: "var(--space-3)",
+        4: "var(--space-4)",
+        6: "var(--space-6)",
+        8: "var(--space-8)",
+        12: "var(--space-12)",
+      },
     },
   },
   plugins: [],
