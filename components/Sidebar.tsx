@@ -157,7 +157,7 @@ export default function Sidebar({
       </EditableBlock>
 
       {/* Realtime presence indicator — live when channel SUBSCRIBED */}
-      <LiveIndicator status={realtimeStatus} />
+      <LiveIndicator status={realtimeStatus} t={t} />
 
       <div className="divider mx-5" />
 
@@ -172,7 +172,7 @@ export default function Sidebar({
         <a href="#hero" className="nav-row" aria-current="page" onClick={close}>
           <IconHome size={18} />
           <span>
-            <EditableText editKey="sidebar.nav.home" fallback="Home" />
+            <EditableText editKey="sidebar.nav.home" fallback={t.navHome} />
           </span>
         </a>
         <a href="#playlist" className="nav-row" onClick={close}>
@@ -180,7 +180,7 @@ export default function Sidebar({
           <span>
             <EditableText
               editKey="sidebar.nav.playlist"
-              fallback="Your playlist"
+              fallback={t.navYourPlaylist}
             />
           </span>
         </a>
@@ -394,13 +394,13 @@ export default function Sidebar({
           }}
           title={
             lock.locked
-              ? "Unlock — full editing"
-              : "Lock for the ceremony — disables edit/drag/delete"
+              ? t.sidebarLockOnTitle
+              : t.sidebarLockOffTitle
           }
         >
           <IconShield size={16} />
           <span>
-            {lock.locked ? "Locked for ceremony" : "Lock for ceremony"}
+            {lock.locked ? t.sidebarLockOn : t.sidebarLockOff}
           </span>
           <span
             className="ms-auto label-micro"
@@ -422,7 +422,7 @@ export default function Sidebar({
               style={{ color: "var(--gold-300)" }}
             >
               <IconEdit size={16} />
-              <span>Edit page</span>
+              <span>{t.sidebarEditPage}</span>
               <span
                 className="ms-auto label-micro"
                 style={{ color: "var(--gold-400)" }}
@@ -435,13 +435,13 @@ export default function Sidebar({
               onClick={actAndClose(() => edit.signOut())}
               className="nav-row"
               style={{ fontSize: 11, opacity: 0.7 }}
-              title="Sign out of admin"
+              title={t.sidebarSignOutAdminTitle}
             >
               <IconClose size={14} />
               <span>
                 <EditableText
                   editKey="sidebar.signOutLabel"
-                  fallback="Sign out admin"
+                  fallback={t.sidebarSignOutAdmin}
                 />
               </span>
             </button>
@@ -589,7 +589,13 @@ function ActionRow({
  * a muted dot + "Offline" otherwise. Hidden until we know the
  * status (parent omits the prop = SSR/no-op).
  */
-function LiveIndicator({ status }: { status?: RealtimeStatus }) {
+function LiveIndicator({
+  status,
+  t,
+}: {
+  status?: RealtimeStatus;
+  t: Strings;
+}) {
   if (!status) return null;
   const isLive = status === "live";
   // Live = mid peach so it reads as positive within the monochrome
@@ -598,10 +604,10 @@ function LiveIndicator({ status }: { status?: RealtimeStatus }) {
   const labelColor = isLive ? "var(--text-muted)" : "var(--text-faint)";
   const label =
     status === "live"
-      ? "Live · synced"
+      ? t.sidebarLive
       : status === "connecting"
-        ? "Connecting…"
-        : "Offline";
+        ? t.sidebarConnecting
+        : t.sidebarOffline;
   return (
     <div
       className="px-5 pb-3 flex items-center gap-2"
