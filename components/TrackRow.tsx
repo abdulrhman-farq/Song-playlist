@@ -180,11 +180,18 @@ function TrackRowImpl({
               type="button"
               onClick={() => onPlay(track.id)}
               onDoubleClick={() => setEditing(true)}
-              className="block truncate w-full text-left transition"
+              className="block w-full text-left transition"
               style={{
                 color: titleColor,
                 fontSize: 15,
                 fontWeight: isCurrent ? 600 : 500,
+                // Full title always visible — wraps to as many lines
+                // as the title needs instead of clipping with an
+                // ellipsis. word-break: break-word handles long URLs
+                // or unbroken Arabic strings.
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+                lineHeight: 1.3,
               }}
               title={track.title}
             >
