@@ -62,6 +62,9 @@ const Timeline = dynamic(() => import("@/components/Timeline"), {
 const Tasks = dynamic(() => import("@/components/Tasks"), {
   ssr: false,
 });
+const LiveMode = dynamic(() => import("@/components/LiveMode"), {
+  ssr: false,
+});
 const TrimModal = dynamic(() => import("@/components/TrimModal"), {
   ssr: false,
 });
@@ -167,6 +170,8 @@ export default function PlaylistApp() {
   const [timelineOpen, setTimelineOpen] = useState(false);
   // Tasks overlay
   const [tasksOpen, setTasksOpen] = useState(false);
+  // Live wedding mode overlay
+  const [liveOpen, setLiveOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1213,6 +1218,8 @@ export default function PlaylistApp() {
   const handleCloseTimeline = useCallback(() => setTimelineOpen(false), []);
   const handleOpenTasks = useCallback(() => setTasksOpen(true), []);
   const handleCloseTasks = useCallback(() => setTasksOpen(false), []);
+  const handleOpenLive = useCallback(() => setLiveOpen(true), []);
+  const handleCloseLive = useCallback(() => setLiveOpen(false), []);
   const handleVolumeChange = useCallback((v: number) => {
     setVolume(v);
     setMuted(false);
@@ -1269,6 +1276,7 @@ export default function PlaylistApp() {
           onScrollToSection={scrollToSection}
           onOpenTimeline={handleOpenTimeline}
           onOpenTasks={handleOpenTasks}
+          onOpenLive={handleOpenLive}
           onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
@@ -1492,6 +1500,16 @@ export default function PlaylistApp() {
           lang={lang}
           t={t}
           onClose={handleCloseTasks}
+        />
+      )}
+
+      {liveOpen && (
+        <LiveMode
+          lang={lang}
+          t={t}
+          onClose={handleCloseLive}
+          currentTrack={tracks.find((x) => x.id === currentId) ?? null}
+          isPlaying={isPlaying}
         />
       )}
 

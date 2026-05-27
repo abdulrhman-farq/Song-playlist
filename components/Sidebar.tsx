@@ -48,6 +48,7 @@ interface Props {
   onScrollToSection: (sectionId: string) => void;
   onOpenTimeline: () => void;
   onOpenTasks: () => void;
+  onOpenLive: () => void;
   onOpenClipsWorkbench?: () => void;
 }
 
@@ -71,6 +72,7 @@ export default function Sidebar({
   onScrollToSection,
   onOpenTimeline,
   onOpenTasks,
+  onOpenLive,
   onOpenClipsWorkbench,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -210,6 +212,21 @@ export default function Sidebar({
           <ChecklistGlyph />
           <span>
             <EditableText editKey="sidebar.nav.tasks" fallback={t.tasks} />
+          </span>
+        </button>
+        <button
+          type="button"
+          className="nav-row"
+          onClick={actAndClose(onOpenLive)}
+          aria-label={t.liveModeBadge}
+        >
+          <LiveDot />
+          <span>{t.liveModeBadge}</span>
+          <span
+            className="ms-auto label-micro"
+            style={{ color: "var(--gold-400)" }}
+          >
+            29 · 05
           </span>
         </button>
       </nav>
@@ -531,6 +548,24 @@ export default function Sidebar({
         </div>
       )}
     </>
+  );
+}
+
+/** Pulsing peach dot — Live mode entry-point glyph. */
+function LiveDot() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 10,
+        height: 10,
+        borderRadius: 999,
+        background: "var(--gold-400)",
+        boxShadow: "0 0 0 0 rgba(216,146,116,0.6)",
+        animation: "wp-live-pulse 1.8s ease-in-out infinite",
+        display: "inline-block",
+      }}
+    />
   );
 }
 
