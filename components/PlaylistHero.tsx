@@ -201,17 +201,6 @@ export default function PlaylistHero({
             />
           </div>
 
-          <h1
-            className="font-arabic-display mt-4 leading-none gpu"
-            style={{
-              fontSize: "var(--fs-hero)",
-              letterSpacing: "0.01em",
-              color: "var(--text)",
-            }}
-          >
-            <EditableText editKey="hero.coupleAr" fallback={t.coupleAr} />
-          </h1>
-
           <div
             className="mt-2 font-display italic"
             style={{
@@ -221,16 +210,6 @@ export default function PlaylistHero({
             }}
           >
             <EditableText editKey="hero.coupleLatin" fallback={t.coupleLatin} />
-          </div>
-
-          <div
-            className="mt-3 italic shimmer-text font-display"
-            style={{
-              fontSize: "var(--fs-lg)",
-              letterSpacing: "0.02em",
-            }}
-          >
-            <EditableText editKey="hero.tagline" fallback={t.inTheAir} />
           </div>
 
           <div
@@ -257,60 +236,6 @@ export default function PlaylistHero({
                   {ytCount} {t.sourceYouTube}
                 </span>
               </>
-            )}
-          </div>
-
-          {/* Editable playlist name */}
-          <div className="mt-5">
-            {editing ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                <input
-                  ref={inputRef}
-                  className="input-elegant"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commit();
-                    if (e.key === "Escape") setEditing(false);
-                  }}
-                  style={{ width: 280, fontStyle: "italic" }}
-                />
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={commit}
-                  title={t.save}
-                >
-                  <IconCheck size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={() => setEditing(false)}
-                  title={t.cancel}
-                >
-                  <IconClose size={16} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="font-display italic flex items-center gap-2 group"
-                style={{
-                  fontSize: 22,
-                  color: "var(--text-dim)",
-                }}
-                title={t.editTitle}
-              >
-                <span>{playlistName || t.untitled}</span>
-                <span
-                  className="opacity-0 group-hover:opacity-100 transition"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  <IconEdit size={14} />
-                </span>
-              </button>
             )}
           </div>
 
