@@ -55,38 +55,13 @@ export interface LiveModeProps {
 
 /* ── Constants ──────────────────────────────────────────────────────── */
 
-const DEFAULT_VENDORS: VendorStatus[] = [
-  {
-    id: "photographer",
-    labelKey: "liveVendorPhotographer",
-    stateKey: "liveVendorReady",
-    tone: "ready",
-  },
-  {
-    id: "dj",
-    labelKey: "liveVendorDj",
-    stateKey: "liveVendorPlaying",
-    tone: "playing",
-  },
-  {
-    id: "florals",
-    labelKey: "liveVendorFlorals",
-    stateKey: "liveVendorSet",
-    tone: "set",
-  },
-  {
-    id: "catering",
-    labelKey: "liveVendorCatering",
-    stateKey: "liveVendorStandby",
-    tone: "standby",
-  },
-  {
-    id: "lighting",
-    labelKey: "liveVendorLighting",
-    stateKey: "liveVendorOnsite",
-    tone: "onsite",
-  },
-];
+/**
+ * Empty by default — vendor mock data was removed at the user's
+ * request ("don't invent vendors"). The bride supplies her real
+ * vendors via the (forthcoming) editor or by passing a `vendors`
+ * prop. Until that exists, the panel is hidden.
+ */
+const DEFAULT_VENDORS: VendorStatus[] = [];
 
 const VENDOR_DOT: Record<VendorState, string> = {
   ready: "#7aa37a",
@@ -283,8 +258,8 @@ export default function LiveMode({
       className="fixed inset-0 z-[200] flex flex-col"
       style={{
         background:
-          "radial-gradient(ellipse 80% 60% at 50% 0%, #f4e1cc 0%, #e8d2b6 45%, #d9bf9c 100%)",
-        color: "#3a2c20",
+          "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(216,146,116,0.16) 0%, transparent 55%), linear-gradient(180deg, rgba(38, 28, 22, 0.99) 0%, rgba(26, 19, 16, 1) 100%)",
+        color: "var(--text)",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingLeft: "env(safe-area-inset-left)",
@@ -297,7 +272,7 @@ export default function LiveMode({
         className="flex items-center justify-between"
         style={{
           padding: "var(--space-4) var(--space-6)",
-          borderBottom: "0.5px solid rgba(58, 44, 32, 0.16)",
+          borderBottom: "1px solid rgba(216, 146, 116, 0.18)",
         }}
       >
         <div className="flex items-center" style={{ gap: "var(--space-3)" }}>
@@ -319,7 +294,7 @@ export default function LiveMode({
               fontSize: "var(--text-eyebrow)",
               letterSpacing: "0.32em",
               textTransform: "uppercase",
-              color: "#8c6a4f",
+              color: "var(--gold-300)",
             }}
           >
             {t.liveModeBadge}
@@ -340,7 +315,7 @@ export default function LiveMode({
               fontSize: "clamp(28px, 5vw, 40px)",
               fontWeight: 500,
               letterSpacing: "0.04em",
-              color: "#3a2c20",
+              color: "var(--text)",
               lineHeight: 1,
             }}
           >
@@ -353,7 +328,7 @@ export default function LiveMode({
           aria-label={t.liveModeClose}
           className="btn-iconic"
           style={{
-            background: "rgba(250, 245, 236, 0.7)",
+            background: "rgba(216, 146, 116, 0.07)",
           }}
         >
           <svg
@@ -390,11 +365,11 @@ export default function LiveMode({
                 marginTop: "var(--space-4)",
                 padding: "var(--space-6)",
                 background:
-                  "linear-gradient(180deg, rgba(250, 245, 236, 0.92), rgba(244, 236, 223, 0.88))",
-                border: "0.5px solid rgba(58, 44, 32, 0.14)",
+                  "linear-gradient(180deg, rgba(216, 146, 116, 0.10), rgba(216, 146, 116, 0.05))",
+                border: "1px solid rgba(216, 146, 116, 0.22)",
                 borderRadius: 8,
                 boxShadow:
-                  "0 24px 48px -30px rgba(58, 44, 32, 0.45), 0 6px 14px -8px rgba(58, 44, 32, 0.12)",
+                  "0 24px 48px -30px rgba(0, 0, 0, 0.7), 0 6px 14px -8px rgba(0, 0, 0, 0.3)",
               }}
             >
               <div
@@ -408,7 +383,7 @@ export default function LiveMode({
                     fontSize: "clamp(32px, 6vw, 44px)",
                     fontWeight: 500,
                     letterSpacing: "0.04em",
-                    color: "#3a2c20",
+                    color: "var(--text)",
                     lineHeight: 1,
                   }}
                 >
@@ -420,7 +395,7 @@ export default function LiveMode({
                     fontSize: "var(--text-meta)",
                     letterSpacing: "0.22em",
                     textTransform: "uppercase",
-                    color: "#8c6a4f",
+                    color: "var(--gold-300)",
                   }}
                 >
                   {t.liveInCountdown}
@@ -431,7 +406,7 @@ export default function LiveMode({
                     fontFamily: "var(--font-meta)",
                     fontSize: "clamp(20px, 3.5vw, 28px)",
                     fontWeight: 500,
-                    color: "#c97b5b",
+                    color: "var(--gold-400)",
                   }}
                 >
                   {countdownLabel}
@@ -447,7 +422,7 @@ export default function LiveMode({
                   fontSize: "clamp(28px, 5vw, 36px)",
                   fontWeight: 500,
                   lineHeight: 1.15,
-                  color: "#3a2c20",
+                  color: "var(--text)",
                 }}
               >
                 {nextMomentTitles.display}
@@ -459,7 +434,7 @@ export default function LiveMode({
                     marginBottom: 0,
                     fontFamily: "var(--font-meta)",
                     fontSize: "var(--text-body)",
-                    color: "rgba(58, 44, 32, 0.62)",
+                    color: "var(--text-faint)",
                   }}
                 >
                   {nextMomentTitles.sub}
@@ -479,8 +454,8 @@ export default function LiveMode({
             style={{
               marginTop: "var(--space-4)",
               padding: "var(--space-4)",
-              background: "rgba(250, 245, 236, 0.7)",
-              border: "0.5px solid rgba(58, 44, 32, 0.12)",
+              background: "rgba(216, 146, 116, 0.07)",
+              border: "1px solid rgba(216, 146, 116, 0.18)",
               borderRadius: 8,
               display: "flex",
               alignItems: "center",
@@ -497,7 +472,7 @@ export default function LiveMode({
                   fontFamily: "var(--font-display)",
                   fontStyle: "var(--font-display-italic-style)",
                   fontSize: "var(--text-title)",
-                  color: "#3a2c20",
+                  color: "var(--text)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -511,7 +486,7 @@ export default function LiveMode({
                     marginTop: "var(--space-1)",
                     fontFamily: "var(--font-meta)",
                     fontSize: "var(--text-meta)",
-                    color: "rgba(58, 44, 32, 0.6)",
+                    color: "var(--text-muted)",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -521,7 +496,7 @@ export default function LiveMode({
                     style={{
                       letterSpacing: "0.24em",
                       textTransform: "uppercase",
-                      color: "#8c6a4f",
+                      color: "var(--gold-300)",
                     }}
                   >
                     {t.liveUpNext}
@@ -573,8 +548,8 @@ export default function LiveMode({
                       alignItems: "center",
                       gap: "var(--space-3)",
                       padding: "var(--space-3) var(--space-4)",
-                      background: "rgba(250, 245, 236, 0.55)",
-                      border: "0.5px solid rgba(58, 44, 32, 0.1)",
+                      background: "rgba(255, 255, 255, 0.02)",
+                      border: "1px solid rgba(216, 146, 116, 0.16)",
                       borderRadius: 6,
                     }}
                   >
@@ -595,7 +570,7 @@ export default function LiveMode({
                         minWidth: 0,
                         fontFamily: "var(--font-display)",
                         fontSize: "var(--text-title)",
-                        color: "#3a2c20",
+                        color: "var(--text)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -610,7 +585,7 @@ export default function LiveMode({
                           fontFamily: "var(--font-meta)",
                           fontSize: "var(--text-meta)",
                           letterSpacing: "0.06em",
-                          color: "#c97b5b",
+                          color: "var(--gold-400)",
                           flexShrink: 0,
                         }}
                       >
@@ -626,7 +601,8 @@ export default function LiveMode({
           )}
         </section>
 
-        {/* Vendor status */}
+        {/* Vendor status — only rendered when real vendors are provided. */}
+        {vendors.length > 0 && (
         <section aria-labelledby="live-vendor-status">
           <SectionLabel id="live-vendor-status">
             {t.liveVendorStatus}
@@ -649,8 +625,8 @@ export default function LiveMode({
                   alignItems: "center",
                   gap: "var(--space-3)",
                   padding: "var(--space-3) var(--space-4)",
-                  background: "rgba(250, 245, 236, 0.45)",
-                  border: "0.5px solid rgba(58, 44, 32, 0.08)",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid rgba(216, 146, 116, 0.14)",
                   borderRadius: 6,
                 }}
               >
@@ -671,7 +647,7 @@ export default function LiveMode({
                     flex: 1,
                     fontFamily: "var(--font-display)",
                     fontSize: "var(--text-title)",
-                    color: "#3a2c20",
+                    color: "var(--text)",
                   }}
                 >
                   {t[vendor.labelKey]}
@@ -682,7 +658,7 @@ export default function LiveMode({
                     fontSize: "var(--text-eyebrow)",
                     letterSpacing: "0.24em",
                     textTransform: "uppercase",
-                    color: "#8c6a4f",
+                    color: "var(--gold-300)",
                   }}
                 >
                   {t[vendor.stateKey]}
@@ -691,6 +667,7 @@ export default function LiveMode({
             ))}
           </ul>
         </section>
+        )}
       </div>
     </div>
   );
@@ -714,7 +691,7 @@ function SectionLabel({
         fontSize: "var(--text-eyebrow)",
         letterSpacing: "0.32em",
         textTransform: "uppercase",
-        color: "#8c6a4f",
+        color: "var(--gold-300)",
         fontWeight: 500,
       }}
     >
@@ -732,7 +709,7 @@ function EmptyLine({ children }: { children: React.ReactNode }): JSX.Element {
         fontFamily: "var(--font-display)",
         fontStyle: "var(--font-display-italic-style)",
         fontSize: "var(--text-body)",
-        color: "rgba(58, 44, 32, 0.5)",
+        color: "var(--text-faint)",
       }}
     >
       {children}

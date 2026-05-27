@@ -16,8 +16,12 @@ const KEY = "wedding-playlist:v1:tasks";
  * `vendor`, `reminder`, `pinned`. Old docs missing the new fields
  * are simply replaced by the new seed on first load so the upgrade
  * looks polished out of the box.
+ *
+ * v4: stripped all auto-guessed categories + priorities from the seed
+ * so the user assigns those themselves instead of inheriting the
+ * agent's fabricated labels.
  */
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -74,82 +78,38 @@ export function defaultTasks(): TaskDoc {
       // ── Open ─────────────────────────────────────────────
       // ISO dates / datetimes so the native picker can edit them.
       // Anchor: wedding day = Friday 2026-05-29.
-      mk("تسديد السيارة", "2026-05-20", false, {
-        category: "الموردين",
-        priority: "high",
-      }),
-      mk("دلكة", "2026-05-27", false, { category: "مهم", priority: "med" }),
-      mk("بتجي رويدا عندي قبل زواج الرجال", "2026-05-28T18:00", false, {
-        category: "العائلة",
-        priority: "high",
-      }),
-      mk("اضافر قبل الزواج بيوم", "2026-05-28T20:00", false, {
-        category: "مهم",
-        priority: "med",
-      }),
-      mk("عشاء الرجال", "2026-05-28T09:30", false, {
-        category: "العائلة",
-        priority: "high",
-      }),
-      mk("زفة الرجال", "2026-05-29T23:30", false, {
-        category: "الزفة",
-        priority: "high",
-      }),
-      mk("زفة رويدا", "2026-05-29T23:34", false, {
-        category: "الزفة",
-        priority: "high",
-      }),
-      mk("عشاء الحريم", "2026-05-30T01:00", false, {
-        category: "العائلة",
-        priority: "med",
-      }),
-      mk("الدخلي الي الله يجيبها", "2026-05-30T03:00", false, {
-        category: "العائلة",
-      }),
+      // No categories — those were guessed; the user assigns their own.
+      mk("تسديد السيارة", "2026-05-20", false),
+      mk("دلكة", "2026-05-27", false),
+      mk("بتجي رويدا عندي قبل زواج الرجال", "2026-05-28T18:00", false),
+      mk("اضافر قبل الزواج بيوم", "2026-05-28T20:00", false),
+      mk("عشاء الرجال", "2026-05-28T09:30", false),
+      mk("زفة الرجال", "2026-05-29T23:30", false),
+      mk("زفة رويدا", "2026-05-29T23:34", false),
+      mk("عشاء الحريم", "2026-05-30T01:00", false),
+      mk("الدخلي الي الله يجيبها", "2026-05-30T03:00", false),
       mk("رموش موعد 30 بالصالون وبنفس الوقت شعر", "2026-05-30T17:00", false, {
         note: "Nailsholic",
-        category: "الموردين",
-        priority: "med",
       }),
-      mk("بنروح اهل زوجتي", "2026-05-30T19:00", false, {
-        category: "العائلة",
-      }),
-      mk("نروح اهلي", "2026-05-31T19:10", false, { category: "العائلة" }),
-      mk("السفرة الذهاب", "2026-06-02T15:00", false, { priority: "low" }),
-      mk("العودة", "2026-06-11T18:30", false, { priority: "low" }),
-      mk("العودة للاجازة", "2026-06-24T08:00", false, { priority: "low" }),
+      mk("بنروح اهل زوجتي", "2026-05-30T19:00", false),
+      mk("نروح اهلي", "2026-05-31T19:10", false),
+      mk("السفرة الذهاب", "2026-06-02T15:00", false),
+      mk("العودة", "2026-06-11T18:30", false),
+      mk("العودة للاجازة", "2026-06-24T08:00", false),
 
       // ── Completed ────────────────────────────────────────
-      mk("ليزر", undefined, true, {
-        completedAt: "2026-05-24",
-        category: "مهم",
-      }),
+      mk("ليزر", undefined, true, { completedAt: "2026-05-24" }),
       mk(
         "تجهيز شنطة يوم الزواج ومالعد الزواج الي بالفندق واللستة",
         undefined,
         true,
-        { completedAt: "2026-05-23", category: "مهم" },
+        { completedAt: "2026-05-23" },
       ),
-      mk("رينساج", undefined, true, {
-        completedAt: "2026-05-22",
-        category: "مهم",
-      }),
-      mk("حمام مغربي", undefined, true, {
-        completedAt: "2026-05-22",
-        category: "مهم",
-      }),
-      mk("اسنان", undefined, true, {
-        completedAt: "2026-05-22",
-        category: "مهم",
-      }),
-      mk("العجلان", undefined, true, {
-        completedAt: "2026-05-18",
-        category: "الموردين",
-      }),
-      mk("رتوش شفايف", undefined, true, {
-        completedAt: "2026-05-18",
-        category: "مهم",
-      }),
+      mk("رينساج", undefined, true, { completedAt: "2026-05-22" }),
+      mk("حمام مغربي", undefined, true, { completedAt: "2026-05-22" }),
+      mk("اسنان", undefined, true, { completedAt: "2026-05-22" }),
+      mk("العجلان", undefined, true, { completedAt: "2026-05-18" }),
+      mk("رتوش شفايف", undefined, true, { completedAt: "2026-05-18" }),
     ],
   };
 }
