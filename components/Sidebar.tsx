@@ -107,8 +107,8 @@ export default function Sidebar({
             height: 38,
             borderRadius: 10,
             overflow: "hidden",
-            border: "1px solid rgba(212,175,55,0.32)",
-            boxShadow: "0 6px 14px -6px rgba(212,175,55,0.35)",
+            border: "1px solid rgba(216, 146, 116,0.32)",
+            boxShadow: "0 6px 14px -6px rgba(216, 146, 116,0.35)",
             flexShrink: 0,
           }}
         >

@@ -36,8 +36,11 @@ function statusLabel(r: EmbedCheckResult | undefined, t: Strings): string {
 
 function statusColor(r: EmbedCheckResult | undefined): string {
   if (!r) return "var(--text-faint)";
-  if (r.kind === "ok") return "#88e0a4";
-  return "#f3a08a";
+  // Light peach for "ok" so it reads as positive without leaving
+  // the monochrome system. Danger keeps a soft red since the
+  // user genuinely needs to see "this won't play".
+  if (r.kind === "ok") return "var(--peach-200)";
+  return "var(--danger)";
 }
 
 export default function ValidationModal({

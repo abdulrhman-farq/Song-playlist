@@ -43,7 +43,7 @@ export default function EditModeToolbar() {
         background: "rgba(20,20,20,0.92)",
         backdropFilter: "blur(16px) saturate(180%)",
         WebkitBackdropFilter: "blur(16px) saturate(180%)",
-        border: "1px solid rgba(212,175,55,0.45)",
+        border: "1px solid rgba(216, 146, 116,0.45)",
         boxShadow: "0 20px 48px -16px rgba(0,0,0,0.8)",
         animation: "fade-in 0.2s ease",
       }}
@@ -53,7 +53,7 @@ export default function EditModeToolbar() {
           fontSize: 10,
           letterSpacing: "0.32em",
           textTransform: "uppercase",
-          color: "var(--gold-300, #e2bb42)",
+          color: "var(--gold-300, #ecb89a)",
           fontFamily: "var(--font-tracked)",
           fontWeight: 500,
         }}
@@ -121,9 +121,9 @@ function pill({ tone }: { tone: "ghost" | "gold" | "danger" }): React.CSSPropert
   if (tone === "gold") {
     return {
       ...base,
-      background: "var(--gold-400, #d4af37)",
+      background: "var(--gold-400, #d89274)",
       color: "#050505",
-      borderColor: "var(--gold-400, #d4af37)",
+      borderColor: "var(--gold-400, #d89274)",
     };
   }
   if (tone === "danger") {

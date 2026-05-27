@@ -71,7 +71,7 @@ export default function UploadPanel({ t, onAddFiles, progress }: Props) {
           ? "1px dashed var(--gold-400)"
           : "1px dashed var(--line-soft)",
         background: dragOver
-          ? "rgba(212,175,55,0.07)"
+          ? "rgba(216, 146, 116,0.07)"
           : "rgba(255,255,255,0.03)",
       }}
     >
@@ -94,7 +94,7 @@ export default function UploadPanel({ t, onAddFiles, progress }: Props) {
         style={{
           opacity: dragOver ? 1 : 0.45,
           background:
-            "radial-gradient(ellipse 60% 60% at 50% 0%, rgba(212,175,55,0.10), transparent 70%)",
+            "radial-gradient(ellipse 60% 60% at 50% 0%, rgba(216, 146, 116,0.10), transparent 70%)",
         }}
       />
 
@@ -105,8 +105,8 @@ export default function UploadPanel({ t, onAddFiles, progress }: Props) {
             width: 52,
             height: 52,
             borderRadius: 14,
-            background: "rgba(212,175,55,0.10)",
-            border: "1px solid rgba(212,175,55,0.28)",
+            background: "rgba(216, 146, 116,0.10)",
+            border: "1px solid rgba(216, 146, 116,0.28)",
             color: "var(--gold-300)",
           }}
         >

@@ -121,7 +121,7 @@ function BottomPlayerImpl({
             width: 360,
             height: 200,
             background:
-              "radial-gradient(ellipse at center, rgba(212,175,55,0.18), transparent 70%)",
+              "radial-gradient(ellipse at center, rgba(216, 146, 116,0.18), transparent 70%)",
             filter: "blur(20px)",
             animation: "ambient-drift 18s ease-in-out infinite alternate",
             opacity: 0.7,
@@ -141,7 +141,7 @@ function BottomPlayerImpl({
               height: 56,
               border: "1px solid var(--line-subtle)",
               background:
-                "linear-gradient(135deg, rgba(212,175,55,0.2), rgba(0,0,0,0.6))",
+                "linear-gradient(135deg, rgba(216, 146, 116,0.2), rgba(0,0,0,0.6))",
             }}
           >
             {/* Halo when playing */}
@@ -167,7 +167,7 @@ function BottomPlayerImpl({
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center"
-                style={{ color: "rgba(212,175,55,0.7)" }}
+                style={{ color: "rgba(216, 146, 116,0.7)" }}
               >
                 <IconMusic size={22} />
               </div>

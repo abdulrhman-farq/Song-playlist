@@ -59,7 +59,7 @@ export default function EditableText({
         cursor: editing ? "text" : style?.cursor,
         outline: "none",
         borderBottom: editing
-          ? "1px dashed rgba(212,175,55,0.55)"
+          ? "1px dashed rgba(216, 146, 116,0.55)"
           : "1px dashed transparent",
         transition: "border-color 0.15s ease",
         whiteSpace: multiline ? "pre-wrap" : undefined,

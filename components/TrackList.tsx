@@ -244,7 +244,7 @@ function SectionBlock({
             height: 2,
             background: "var(--gold-400)",
             borderRadius: 999,
-            boxShadow: "0 0 12px rgba(212, 175, 55, 0.6)",
+            boxShadow: "0 0 12px rgba(216, 146, 116, 0.6)",
             top: sectionDropIndicator === "above" ? -10 : undefined,
             bottom: sectionDropIndicator === "below" ? -10 : undefined,
             pointerEvents: "none",
@@ -267,7 +267,7 @@ function SectionBlock({
           hasActiveHere
             ? {
                 background:
-                  "linear-gradient(90deg, rgba(212,175,55,0.10) 0%, rgba(212,175,55,0.04) 50%, transparent 100%)",
+                  "linear-gradient(90deg, rgba(216, 146, 116,0.10) 0%, rgba(216, 146, 116,0.04) 50%, transparent 100%)",
                 borderRadius: 10,
                 paddingInline: 12,
                 paddingBlock: 8,
@@ -289,7 +289,7 @@ function SectionBlock({
               borderRadius: 999,
               background: "var(--gold-400)",
               boxShadow:
-                "0 0 12px rgba(212,175,55,0.75), 0 0 24px rgba(216,146,116,0.55)",
+                "0 0 12px rgba(216, 146, 116,0.75), 0 0 24px rgba(216,146,116,0.55)",
               animation: "glow-pulse 2.2s ease-in-out infinite",
             }}
           />

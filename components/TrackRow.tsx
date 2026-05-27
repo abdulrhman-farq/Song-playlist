@@ -134,7 +134,7 @@ function TrackRowImpl({
           width: 40,
           height: 40,
           background:
-            "linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(0,0,0,0.6) 100%)",
+            "linear-gradient(135deg, rgba(216, 146, 116,0.12) 0%, rgba(0,0,0,0.6) 100%)",
           border: "1px solid var(--line-subtle)",
         }}
       >
@@ -152,7 +152,7 @@ function TrackRowImpl({
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ color: "rgba(212,175,55,0.6)" }}
+            style={{ color: "rgba(216, 146, 116,0.6)" }}
           >
             <IconMusic size={18} />
           </div>

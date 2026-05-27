@@ -152,7 +152,7 @@ export default function PlaylistHero({
                 height: "100%",
                 borderRadius: 22,
                 boxShadow:
-                  "0 30px 60px -20px rgba(0,0,0,0.7), 0 12px 30px -10px rgba(212,175,55,0.35), inset 0 0 0 1px rgba(255,255,255,0.08)",
+                  "0 30px 60px -20px rgba(0,0,0,0.7), 0 12px 30px -10px rgba(216, 146, 116,0.35), inset 0 0 0 1px rgba(255,255,255,0.08)",
                 background:
                   "linear-gradient(180deg, #FAF5EC 0%, #EBE0CE 100%)",
               }}
@@ -240,11 +240,11 @@ export default function PlaylistHero({
             <span>
               {tracks.length} {tracks.length === 1 ? t.track : t.tracks}
             </span>
-            <OrnamentMark size={6} color="#d4af37" />
+            <OrnamentMark size={6} color="#d89274" />
             <span className="tnum">{fmtTime(totalSeconds)}</span>
             {uploadCount > 0 && (
               <>
-                <OrnamentMark size={6} color="#d4af37" />
+                <OrnamentMark size={6} color="#d89274" />
                 <span>
                   {uploadCount} {t.sourceUpload}
                 </span>
@@ -252,7 +252,7 @@ export default function PlaylistHero({
             )}
             {ytCount > 0 && (
               <>
-                <OrnamentMark size={6} color="#d4af37" />
+                <OrnamentMark size={6} color="#d89274" />
                 <span>
                   {ytCount} {t.sourceYouTube}
                 </span>
@@ -394,14 +394,14 @@ function CountdownChip({
         fontFamily: "var(--font-body)",
         fontWeight: 500,
         background: isClose
-          ? "rgba(212,175,55,0.14)"
+          ? "rgba(216, 146, 116,0.14)"
           : "rgba(255,255,255,0.04)",
         color: isClose ? "var(--gold-200)" : "var(--text-dim)",
         border: `1px solid ${
-          isClose ? "rgba(212,175,55,0.45)" : "var(--line-soft)"
+          isClose ? "rgba(216, 146, 116,0.45)" : "var(--line-soft)"
         }`,
         boxShadow: isClose
-          ? "0 10px 24px -14px rgba(212,175,55,0.45)"
+          ? "0 10px 24px -14px rgba(216, 146, 116,0.45)"
           : undefined,
       }}
     >

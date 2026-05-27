@@ -194,7 +194,7 @@ function ClipScrubBar({
           left: `${startPct}%`,
           width: `${Math.max(0, endPct - startPct)}%`,
           background:
-            "linear-gradient(90deg, rgba(212,175,55,0.32), rgba(216,146,116,0.32))",
+            "linear-gradient(90deg, rgba(216, 146, 116,0.32), rgba(216,146,116,0.32))",
           border: "1px solid var(--gold-400)",
           borderRadius: 4,
         }}
@@ -662,7 +662,7 @@ export default function ClipsWorkbench({
                           background:
                             previewingId === cl.id
                               ? "var(--gold-400)"
-                              : "rgba(212,175,55,0.15)",
+                              : "rgba(216, 146, 116,0.15)",
                           color:
                             previewingId === cl.id ? "#050505" : "var(--gold-300)",
                           border: "1px solid var(--line-gold)",
@@ -807,7 +807,7 @@ export default function ClipsWorkbench({
                             letterSpacing: "0.18em",
                             textTransform: "uppercase",
                             color: "var(--gold-300)",
-                            background: "rgba(212,175,55,0.10)",
+                            background: "rgba(216, 146, 116,0.10)",
                             border: "1px solid var(--line-gold)",
                             borderRadius: 999,
                             padding: "4px 10px",
@@ -834,7 +834,7 @@ export default function ClipsWorkbench({
                             letterSpacing: "0.18em",
                             textTransform: "uppercase",
                             color: "var(--gold-300)",
-                            background: "rgba(212,175,55,0.10)",
+                            background: "rgba(216, 146, 116,0.10)",
                             border: "1px solid var(--line-gold)",
                             borderRadius: 999,
                             padding: "4px 10px",

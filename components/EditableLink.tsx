@@ -122,7 +122,7 @@ export default function EditableLink({
       style={{
         position: "relative",
         display: "inline-block",
-        outline: hovering || open ? "2px solid rgba(212,175,55,0.55)" : "2px solid transparent",
+        outline: hovering || open ? "2px solid rgba(216, 146, 116,0.55)" : "2px solid transparent",
         outlineOffset: 2,
         borderRadius: 4,
         transition: "outline-color 0.15s ease",
@@ -156,8 +156,8 @@ export default function EditableLink({
             height: 18,
             borderRadius: 999,
             background: "rgba(20,20,20,0.92)",
-            color: "var(--gold-300, #e2bb42)",
-            border: "1px solid rgba(212,175,55,0.45)",
+            color: "var(--gold-300, #ecb89a)",
+            border: "1px solid rgba(216, 146, 116,0.45)",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
@@ -189,7 +189,7 @@ export default function EditableLink({
             background: "rgba(20,20,20,0.96)",
             backdropFilter: "blur(16px) saturate(180%)",
             WebkitBackdropFilter: "blur(16px) saturate(180%)",
-            border: "1px solid rgba(212,175,55,0.45)",
+            border: "1px solid rgba(216, 146, 116,0.45)",
             boxShadow: "0 20px 48px -16px rgba(0,0,0,0.8)",
             color: "var(--text, #fafafa)",
             fontFamily: "var(--font-body)",
@@ -203,7 +203,7 @@ export default function EditableLink({
               fontSize: 10,
               letterSpacing: "0.28em",
               textTransform: "uppercase",
-              color: "var(--gold-300, #e2bb42)",
+              color: "var(--gold-300, #ecb89a)",
               fontFamily: "var(--font-tracked)",
               fontWeight: 500,
               marginBottom: 10,
@@ -293,9 +293,9 @@ function pill(tone: "ghost" | "gold"): React.CSSProperties {
   if (tone === "gold") {
     return {
       ...base,
-      background: "var(--gold-400, #d4af37)",
+      background: "var(--gold-400, #d89274)",
       color: "#050505",
-      borderColor: "var(--gold-400, #d4af37)",
+      borderColor: "var(--gold-400, #d89274)",
     };
   }
   return {
