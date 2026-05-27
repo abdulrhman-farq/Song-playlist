@@ -46,6 +46,222 @@ function clipId(): string {
   return `clip_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * Visual scrub bar for a single clip.
+ *
+ * - Shows the full source track length as a dim track.
+ * - Highlights the selected [startAt, endAt] range in gold.
+ * - Two draggable handles (pointer events: works on mouse + touch).
+ * - Optional playhead line during preview.
+ * - Clicking outside the handles seeks the playhead (caller decides
+ *   whether that also restarts playback — we just emit `onScrub`).
+ */
+function ClipScrubBar({
+  duration,
+  startAt,
+  endAt,
+  currentTime,
+  onChange,
+  onScrub,
+  disabled,
+}: {
+  duration: number;
+  startAt: number;
+  endAt: number;
+  /** Null = not currently being previewed. */
+  currentTime: number | null;
+  onChange: (start: number, end: number) => void;
+  onScrub?: (t: number) => void;
+  disabled?: boolean;
+}) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    handle: "start" | "end" | "scrub";
+    pointerId: number;
+  } | null>(null);
+
+  if (!duration || duration <= 0) {
+    return (
+      <div
+        style={{
+          height: 28,
+          margin: "10px 0",
+          borderRadius: 6,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px dashed var(--line-subtle)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          color: "var(--text-faint)",
+          letterSpacing: "0.1em",
+        }}
+      >
+        — source duration unknown —
+      </div>
+    );
+  }
+
+  const startPct = Math.max(0, Math.min(100, (startAt / duration) * 100));
+  const endPct = Math.max(0, Math.min(100, (endAt / duration) * 100));
+  const playheadPct =
+    currentTime != null
+      ? Math.max(0, Math.min(100, (currentTime / duration) * 100))
+      : null;
+
+  function pointerToTime(clientX: number): number {
+    const bar = barRef.current;
+    if (!bar) return 0;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.max(
+      0,
+      Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)),
+    );
+    return Math.round(ratio * duration * 10) / 10; // snap to 0.1s
+  }
+
+  function startDrag(
+    handle: "start" | "end" | "scrub",
+    e: React.PointerEvent,
+  ) {
+    if (disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    dragRef.current = { handle, pointerId: e.pointerId };
+    if (handle === "scrub") {
+      const t = pointerToTime(e.clientX);
+      onScrub?.(t);
+    }
+  }
+  function handleMove(e: React.PointerEvent) {
+    if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+    const t = pointerToTime(e.clientX);
+    if (dragRef.current.handle === "start") {
+      onChange(Math.min(t, Math.max(0, endAt - 0.1)), endAt);
+    } else if (dragRef.current.handle === "end") {
+      onChange(startAt, Math.max(t, startAt + 0.1));
+    } else {
+      onScrub?.(t);
+    }
+  }
+  function handleUp(e: React.PointerEvent) {
+    if (dragRef.current && dragRef.current.pointerId === e.pointerId) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      dragRef.current = null;
+    }
+  }
+
+  return (
+    <div
+      ref={barRef}
+      onPointerDown={(e) => startDrag("scrub", e)}
+      onPointerMove={handleMove}
+      onPointerUp={handleUp}
+      onPointerCancel={handleUp}
+      style={{
+        position: "relative",
+        height: 28,
+        margin: "10px 0",
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: 6,
+        cursor: disabled ? "not-allowed" : "pointer",
+        touchAction: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        opacity: disabled ? 0.5 : 1,
+      }}
+      aria-label="Clip range scrubber"
+      role="slider"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round(startAt)}
+    >
+      {/* Selected range */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          insetBlock: 0,
+          left: `${startPct}%`,
+          width: `${Math.max(0, endPct - startPct)}%`,
+          background:
+            "linear-gradient(90deg, rgba(212,175,55,0.32), rgba(216,146,116,0.32))",
+          border: "1px solid var(--gold-400)",
+          borderRadius: 4,
+        }}
+      />
+      {/* Start handle */}
+      <div
+        onPointerDown={(e) => startDrag("start", e)}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+        aria-label="Drag start"
+        style={{
+          position: "absolute",
+          left: `${startPct}%`,
+          top: -3,
+          bottom: -3,
+          width: 14,
+          marginLeft: -7,
+          background: "var(--gold-400)",
+          borderRadius: 4,
+          cursor: "ew-resize",
+          touchAction: "none",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+        }}
+      />
+      {/* End handle */}
+      <div
+        onPointerDown={(e) => startDrag("end", e)}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+        aria-label="Drag end"
+        style={{
+          position: "absolute",
+          left: `${endPct}%`,
+          top: -3,
+          bottom: -3,
+          width: 14,
+          marginLeft: -7,
+          background: "var(--gold-400)",
+          borderRadius: 4,
+          cursor: "ew-resize",
+          touchAction: "none",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+        }}
+      />
+      {/* Live playhead during preview */}
+      {playheadPct != null && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: `${playheadPct}%`,
+            top: -5,
+            bottom: -5,
+            width: 2,
+            marginLeft: -1,
+            background: "#fff",
+            boxShadow: "0 0 10px rgba(255,255,255,0.9), 0 0 18px var(--gold-400)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 function parseTimeInput(s: string): number | null {
   const v = s.trim();
   if (!v) return 0;
@@ -539,6 +755,93 @@ export default function ClipsWorkbench({
                         />
                       </label>
                     </div>
+
+                    {/* Visual scrub bar — drag the gold knobs to set
+                        From/To by eye + ear instead of typing numbers. */}
+                    <ClipScrubBar
+                      duration={dur ?? 0}
+                      startAt={cl.startAt}
+                      endAt={cl.endAt}
+                      currentTime={previewingId === cl.id ? previewTime : null}
+                      disabled={busy}
+                      onChange={(s, e) =>
+                        updateClip(cl.id, { startAt: s, endAt: e })
+                      }
+                      onScrub={(time) => {
+                        const audio = previewAudioRef.current;
+                        if (audio && previewingId === cl.id) {
+                          audio.currentTime = Math.max(0, time);
+                          setPreviewTime(audio.currentTime);
+                        } else {
+                          // Not previewing yet — set the playhead state
+                          // to give a visual click feedback even though
+                          // nothing is playing.
+                          setPreviewTime(Math.max(0, time));
+                        }
+                      }}
+                    />
+
+                    {/* "Use playhead" — capture the right beat while
+                        listening. Only show during preview. */}
+                    {previewingId === cl.id && (
+                      <div className="flex flex-wrap gap-2 mt-1 mb-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateClip(cl.id, {
+                              startAt: Math.min(
+                                previewTime,
+                                Math.max(0, cl.endAt - 0.1),
+                              ),
+                            })
+                          }
+                          disabled={busy}
+                          style={{
+                            fontSize: 10,
+                            letterSpacing: "0.18em",
+                            textTransform: "uppercase",
+                            color: "var(--gold-300)",
+                            background: "rgba(212,175,55,0.10)",
+                            border: "1px solid var(--line-gold)",
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            fontFamily: "var(--font-tracked)",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          ↦ {t.clipFrom} = {fmtTime(previewTime)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateClip(cl.id, {
+                              endAt: Math.max(
+                                previewTime,
+                                cl.startAt + 0.1,
+                              ),
+                            })
+                          }
+                          disabled={busy}
+                          style={{
+                            fontSize: 10,
+                            letterSpacing: "0.18em",
+                            textTransform: "uppercase",
+                            color: "var(--gold-300)",
+                            background: "rgba(212,175,55,0.10)",
+                            border: "1px solid var(--line-gold)",
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            fontFamily: "var(--font-tracked)",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t.clipTo} = {fmtTime(previewTime)} ↤
+                        </button>
+                      </div>
+                    )}
+
                     <div
                       className="mt-2 text-[10px] tnum flex items-center gap-2 flex-wrap"
                       style={{ color: "var(--text-faint)" }}
@@ -562,31 +865,6 @@ export default function ClipsWorkbench({
                         </>
                       )}
                     </div>
-                    {/* Preview progress bar — only renders while this
-                        clip is being auditioned. Shows playhead within
-                        the [startAt, endAt] window. */}
-                    {previewingId === cl.id && cl.endAt > cl.startAt && (
-                      <div
-                        className="mt-1 progress-track"
-                        style={{ height: 3 }}
-                        aria-hidden
-                      >
-                        <div
-                          className="progress-fill"
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                ((previewTime - cl.startAt) /
-                                  (cl.endAt - cl.startAt)) *
-                                  100,
-                              ),
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}
