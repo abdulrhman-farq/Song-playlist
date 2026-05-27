@@ -1072,7 +1072,13 @@ function LongPressMenu({
   }, [onClose]);
 
   return (
-    <div ref={ref} className="tasks-longpress-menu" role="menu">
+    <div
+      ref={ref}
+      className="tasks-longpress-menu"
+      role="menu"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         role="menuitem"
