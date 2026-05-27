@@ -7,6 +7,8 @@ import {
   IconClock,
   IconClose,
   IconMusic,
+  IconPause,
+  IconPlay,
   IconPlus,
   IconTrash,
 } from "@/components/icons";
@@ -80,7 +82,128 @@ export default function ClipsWorkbench({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const titleId = useId();
 
-  // Reset whenever the modal re-opens
+  /* ── Per-clip preview engine ────────────────────────────
+     Plays the source track between startAt and endAt so the
+     user can audition the chosen range before merging. One
+     clip plays at a time; clicking another stops the previous.
+     Stops automatically at endAt via the timeupdate handler so
+     mid-preview edits of endAt are respected. */
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [previewTime, setPreviewTime] = useState(0);
+
+  // Mount a singleton <audio> once
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "metadata";
+    previewAudioRef.current = audio;
+    return () => {
+      try {
+        audio.pause();
+      } catch {
+        /* ignore */
+      }
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  // Track preview progress + auto-stop at endAt
+  useEffect(() => {
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+    function onTime() {
+      const a = previewAudioRef.current;
+      if (!a) return;
+      setPreviewTime(a.currentTime);
+      const cl = clips.find((c) => c.id === previewingId);
+      if (!cl) return;
+      if (a.currentTime >= cl.endAt) {
+        a.pause();
+        setPreviewingId(null);
+      }
+    }
+    function onEnded() {
+      setPreviewingId(null);
+    }
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [previewingId, clips]);
+
+  function stopPreview() {
+    const a = previewAudioRef.current;
+    if (a) {
+      try {
+        a.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+    setPreviewingId(null);
+  }
+
+  async function togglePreview(clip: ClipDraft) {
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+    if (previewingId === clip.id) {
+      stopPreview();
+      return;
+    }
+    // Stop anything playing
+    try {
+      audio.pause();
+    } catch {
+      /* ignore */
+    }
+    // Load this clip's blob if it's not already the source. We key
+    // by trackId rather than blob so switching between clips of the
+    // same source reuses the object URL without re-fetching.
+    const src = uploadTracks.find((x) => x.id === clip.trackId);
+    if (!src) return;
+    const wantUrl = `clip-src:${clip.trackId}`;
+    if ((audio as HTMLAudioElement).dataset.srcKey !== wantUrl) {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+      const blob = await getBlob(clip.trackId);
+      if (!blob) {
+        setErr(`Audio for "${src.title}" not on this device`);
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      previewUrlRef.current = url;
+      audio.src = url;
+      (audio as HTMLAudioElement).dataset.srcKey = wantUrl;
+      // Wait briefly for metadata so currentTime seeking works
+      const a = audio;
+      await new Promise<void>((resolve) => {
+        function onMeta() {
+          a.removeEventListener("loadedmetadata", onMeta);
+          resolve();
+        }
+        if (a.readyState >= 1) resolve();
+        else a.addEventListener("loadedmetadata", onMeta);
+      });
+    }
+    audio.currentTime = Math.max(0, clip.startAt);
+    setPreviewTime(audio.currentTime);
+    try {
+      await audio.play();
+      setPreviewingId(clip.id);
+    } catch {
+      setErr("Couldn't start preview (browser blocked autoplay?)");
+    }
+  }
+
+  // Reset whenever the modal re-opens; also stop any preview when it closes
   useEffect(() => {
     if (open) {
       setClips([]);
@@ -90,6 +213,16 @@ export default function ClipsWorkbench({
       setStage(null);
       setProgress(0);
       setErr(null);
+    } else {
+      const a = previewAudioRef.current;
+      if (a) {
+        try {
+          a.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+      setPreviewingId(null);
     }
   }, [open]);
 
@@ -150,6 +283,7 @@ export default function ClipsWorkbench({
 
   async function build() {
     setErr(null);
+    stopPreview();
     if (clips.length === 0) {
       setErr(t.noUploadsForMerge);
       return;
@@ -284,6 +418,43 @@ export default function ClipsWorkbench({
                     }}
                   >
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePreview(cl)}
+                        disabled={busy}
+                        aria-label={
+                          previewingId === cl.id ? "Stop preview" : "Preview clip"
+                        }
+                        title={
+                          previewingId === cl.id
+                            ? "Stop preview"
+                            : "Preview this range"
+                        }
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 999,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background:
+                            previewingId === cl.id
+                              ? "var(--gold-400)"
+                              : "rgba(212,175,55,0.15)",
+                          color:
+                            previewingId === cl.id ? "#050505" : "var(--gold-300)",
+                          border: "1px solid var(--line-gold)",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                          transition: "all var(--dur-fast) var(--ease-out)",
+                        }}
+                      >
+                        {previewingId === cl.id ? (
+                          <IconPause size={12} />
+                        ) : (
+                          <IconPlay size={12} />
+                        )}
+                      </button>
                       <span
                         className="font-display italic truncate"
                         style={{
@@ -369,7 +540,7 @@ export default function ClipsWorkbench({
                       </label>
                     </div>
                     <div
-                      className="mt-2 text-[10px] tnum flex items-center gap-2"
+                      className="mt-2 text-[10px] tnum flex items-center gap-2 flex-wrap"
                       style={{ color: "var(--text-faint)" }}
                     >
                       <IconClock size={9} />
@@ -382,7 +553,40 @@ export default function ClipsWorkbench({
                           <span>source {fmtTime(dur)}</span>
                         </>
                       )}
+                      {previewingId === cl.id && (
+                        <>
+                          <span>·</span>
+                          <span style={{ color: "var(--gold-300)" }}>
+                            ▶ {fmtTime(previewTime)}
+                          </span>
+                        </>
+                      )}
                     </div>
+                    {/* Preview progress bar — only renders while this
+                        clip is being auditioned. Shows playhead within
+                        the [startAt, endAt] window. */}
+                    {previewingId === cl.id && cl.endAt > cl.startAt && (
+                      <div
+                        className="mt-1 progress-track"
+                        style={{ height: 3 }}
+                        aria-hidden
+                      >
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                ((previewTime - cl.startAt) /
+                                  (cl.endAt - cl.startAt)) *
+                                  100,
+                              ),
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
