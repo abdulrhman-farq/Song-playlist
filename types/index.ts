@@ -96,6 +96,32 @@ export interface TimelineEntry {
 }
 
 /**
+ * Wedding-prep to-do entry. Keeps the shape lightweight on purpose —
+ * `due` and `completedAt` are display strings so the user can paste
+ * whatever phrasing they want ("Today", "Fri, 29 May at 11:30 PM",
+ * "Due 1 week ago") without us forcing them through a date parser.
+ */
+export interface TaskEntry {
+  id: string;
+  title: string;
+  /** Free-form due-date string. Empty = no due date. */
+  due?: string;
+  /** Optional sub-line under the title (e.g. salon name "Nailsholic"). */
+  note?: string;
+  done: boolean;
+  /** Free-form completion date string for the "Completed" section. */
+  completedAt?: string;
+  /** Marked important — drives a peach star + sort priority. */
+  starred?: boolean;
+}
+
+export interface TaskDoc {
+  entries: TaskEntry[];
+  /** Seed-version stamp; bumped when defaults change so storage auto-migrates. */
+  version?: number;
+}
+
+/**
  * Every header / footer block on the printable timeline. Empty
  * string for a field means the block is hidden — the user removed
  * it. Reset-to-default restores all.

@@ -56,6 +56,9 @@ import type {
 const Timeline = dynamic(() => import("@/components/Timeline"), {
   ssr: false,
 });
+const Tasks = dynamic(() => import("@/components/Tasks"), {
+  ssr: false,
+});
 const TrimModal = dynamic(() => import("@/components/TrimModal"), {
   ssr: false,
 });
@@ -159,6 +162,8 @@ export default function PlaylistApp() {
   const [dialog, setDialog] = useState<DialogState>({ kind: "none" });
   // Timeline overlay
   const [timelineOpen, setTimelineOpen] = useState(false);
+  // Tasks overlay
+  const [tasksOpen, setTasksOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1159,6 +1164,8 @@ export default function PlaylistApp() {
   }, []);
   const handleOpenTimeline = useCallback(() => setTimelineOpen(true), []);
   const handleCloseTimeline = useCallback(() => setTimelineOpen(false), []);
+  const handleOpenTasks = useCallback(() => setTasksOpen(true), []);
+  const handleCloseTasks = useCallback(() => setTasksOpen(false), []);
   const handleVolumeChange = useCallback((v: number) => {
     setVolume(v);
     setMuted(false);
@@ -1213,6 +1220,7 @@ export default function PlaylistApp() {
           onAddSection={handleAddSection}
           onScrollToSection={scrollToSection}
           onOpenTimeline={handleOpenTimeline}
+          onOpenTasks={handleOpenTasks}
           onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
@@ -1314,6 +1322,7 @@ export default function PlaylistApp() {
             dropPos={dropPos}
             dragOverSection={dragOverSection}
             registerSectionRef={registerSectionRef}
+            onAssignSection={handleAssignSection}
           />
         )}
 
@@ -1416,6 +1425,14 @@ export default function PlaylistApp() {
           lang={lang}
           t={t}
           onClose={handleCloseTimeline}
+        />
+      )}
+
+      {tasksOpen && (
+        <Tasks
+          lang={lang}
+          t={t}
+          onClose={handleCloseTasks}
         />
       )}
     </AppShell>

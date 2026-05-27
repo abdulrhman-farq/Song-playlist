@@ -28,6 +28,8 @@ interface Props {
   onRenameTrack: (id: string, title: string) => void;
   onEditTrim: (id: string) => void;
   onPlaySection: (sectionId: string | null) => void;
+  /** Move a track into a named section (null = unassign). */
+  onAssignSection: (trackId: string, sectionId: string | null) => void;
 
   onRenameSection: (id: string) => void;
   onDeleteSection: (id: string) => void;
@@ -177,6 +179,7 @@ function SectionBlock({
   isFirst,
   isLast,
   tracks,
+  sections,
   sectionDropIndicator,
   t,
   currentId,
@@ -187,6 +190,7 @@ function SectionBlock({
   onRenameTrack,
   onEditTrim,
   onPlaySection,
+  onAssignSection,
   onRenameSection,
   onDeleteSection,
   onMoveSection,
@@ -360,6 +364,55 @@ function SectionBlock({
           />
         </div>
       </header>
+
+      {/* Unassigned block: bulk "Move all to section" picker so the
+          user doesn't have to assign tracks one by one. Only rendered
+          when there's at least one real section to pick. */}
+      {!section && sections.length > 0 && tracks.length > 0 && (
+        <div
+          className="mx-2 mb-3 px-3 py-2 rounded-lg flex items-center gap-2 flex-wrap"
+          style={{
+            background: "rgba(216, 146, 116, 0.06)",
+            border: "1px solid rgba(216, 146, 116, 0.2)",
+          }}
+        >
+          <span
+            className="text-[12px]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {t.assignAllToSection}
+          </span>
+          <select
+            className="bg-transparent text-[12px] tnum"
+            style={{
+              color: "var(--gold-300)",
+              border: "1px solid rgba(216, 146, 116, 0.25)",
+              borderRadius: 6,
+              padding: "3px 6px",
+            }}
+            defaultValue=""
+            onChange={(e) => {
+              const targetId = e.target.value;
+              if (!targetId) return;
+              for (const tr of tracks) {
+                onAssignSection(tr.id, targetId);
+              }
+              // Reset so the picker can be reused
+              e.target.value = "";
+            }}
+            aria-label={t.assignAllToSection}
+          >
+            <option value="" disabled>
+              {t.pickSection}
+            </option>
+            {sections.map((s) => (
+              <option key={s.id} value={s.id} style={{ color: "#1a1310" }}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Body */}
       {tracks.length === 0 ? (

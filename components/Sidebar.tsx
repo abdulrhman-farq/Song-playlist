@@ -47,6 +47,7 @@ interface Props {
   onAddSection: () => void;
   onScrollToSection: (sectionId: string) => void;
   onOpenTimeline: () => void;
+  onOpenTasks: () => void;
   onOpenClipsWorkbench?: () => void;
 }
 
@@ -69,6 +70,7 @@ export default function Sidebar({
   onAddSection,
   onScrollToSection,
   onOpenTimeline,
+  onOpenTasks,
   onOpenClipsWorkbench,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -188,6 +190,17 @@ export default function Sidebar({
             style={{ color: "var(--gold-400)" }}
           >
             R · A
+          </span>
+        </button>
+        <button
+          type="button"
+          className="nav-row"
+          onClick={actAndClose(onOpenTasks)}
+          aria-label={t.tasks}
+        >
+          <ChecklistGlyph />
+          <span>
+            <EditableText editKey="sidebar.nav.tasks" fallback={t.tasks} />
           </span>
         </button>
       </nav>
@@ -483,6 +496,28 @@ export default function Sidebar({
         </div>
       )}
     </>
+  );
+}
+
+/** Tiny inline checklist icon — kept local so icons.tsx doesn't grow. */
+function ChecklistGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="3 8 5 10 9 6" />
+      <polyline points="3 16 5 18 9 14" />
+      <line x1="12" y1="8" x2="21" y2="8" />
+      <line x1="12" y1="16" x2="21" y2="16" />
+    </svg>
   );
 }
 
