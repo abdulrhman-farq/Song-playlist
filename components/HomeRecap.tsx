@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
 import { dir as dirOf } from "@/lib/i18n";
+import { formatDue, parseDue } from "@/lib/dueDate";
 import { loadTasks, defaultTasks } from "@/lib/tasksStorage";
 import { loadTimeline, defaultTimeline } from "@/lib/timelineStorage";
 import type {
@@ -82,12 +83,22 @@ export default function HomeRecap({
     [tasksDoc.entries],
   );
   const nextTasks = useMemo(() => {
-    const starred = openTasks
-      .filter((e) => e.starred)
+    // Sort by due date (earliest first, no-due → bottom); starred
+    // floats inside each group so an important undated task can still
+    // surface ahead of a far-off dated one.
+    return openTasks
+      .slice()
+      .sort((a, b) => {
+        const da = parseDue(a.due);
+        const db = parseDue(b.due);
+        if (da && !db) return -1;
+        if (!da && db) return 1;
+        if (da && db && da.getTime() !== db.getTime()) {
+          return da.getTime() - db.getTime();
+        }
+        return Number(b.starred ?? false) - Number(a.starred ?? false);
+      })
       .slice(0, 3);
-    if (starred.length >= 3) return starred;
-    const fill = openTasks.filter((e) => !e.starred);
-    return [...starred, ...fill].slice(0, 3);
   }, [openTasks]);
 
   const nextMoments = useMemo(
@@ -151,7 +162,10 @@ export default function HomeRecap({
           nextTasks.length === 0
             ? t.recapTasksEmpty
             : nextTasks
-                .map((tk) => `• ${tk.title}${tk.due ? ` — ${tk.due}` : ""}`)
+                .map((tk) => {
+                  const due = tk.due ? formatDue(tk.due, lang) : "";
+                  return `• ${tk.title}${due ? ` — ${due}` : ""}`;
+                })
                 .join("\n")
         }
         onClick={onOpenTasks}

@@ -15,6 +15,12 @@ import {
   newTask,
   saveTasks,
 } from "@/lib/tasksStorage";
+import {
+  formatDue,
+  isOverdue,
+  parseDue,
+  toDatetimeLocalValue,
+} from "@/lib/dueDate";
 import type { Strings } from "@/lib/i18n";
 import { dir as dirOf } from "@/lib/i18n";
 import type { Language, TaskDoc, TaskEntry } from "@/types";
@@ -43,7 +49,6 @@ export default function Tasks({ lang, t, onClose }: Props) {
   const [doc, setDoc] = useState<TaskDoc>(() => defaultTasks());
   const [hydrated, setHydrated] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingDueId, setEditingDueId] = useState<string | null>(null);
   const [completedOpen, setCompletedOpen] = useState(true);
   const newTitleRef = useRef<HTMLInputElement | null>(null);
 
@@ -62,20 +67,42 @@ export default function Tasks({ lang, t, onClose }: Props) {
     saveTasks(doc);
   }, [doc, hydrated]);
 
-  // Split open vs completed; starred items float to top inside each
-  // bucket so the user's "important next" stays in the eye.
+  // Split open vs completed and sort chronologically:
+  // - Open: earliest due first, no-due → bottom; starred floats inside
+  //   each "has-due" / "no-due" group.
+  // - Completed: most recent completion first.
   const { openEntries, completedEntries } = useMemo(() => {
     const open: TaskEntry[] = [];
     const done: TaskEntry[] = [];
     for (const e of doc.entries) {
       (e.done ? done : open).push(e);
     }
-    const byStar = (a: TaskEntry, b: TaskEntry) =>
-      Number(b.starred ?? false) - Number(a.starred ?? false);
-    return {
-      openEntries: open.slice().sort(byStar),
-      completedEntries: done,
-    };
+    const openSorted = open.slice().sort((a, b) => {
+      const da = parseDue(a.due);
+      const db = parseDue(b.due);
+      // No-due sinks to the bottom.
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      if (da && db) {
+        if (da.getTime() !== db.getTime()) {
+          return da.getTime() - db.getTime();
+        }
+      }
+      // Same date (or both undated): starred first.
+      const starDiff =
+        Number(b.starred ?? false) - Number(a.starred ?? false);
+      if (starDiff !== 0) return starDiff;
+      return 0;
+    });
+    const doneSorted = done.slice().sort((a, b) => {
+      const da = parseDue(a.completedAt);
+      const db = parseDue(b.completedAt);
+      if (da && db) return db.getTime() - da.getTime();
+      if (da) return -1;
+      if (db) return 1;
+      return 0;
+    });
+    return { openEntries: openSorted, completedEntries: doneSorted };
   }, [doc.entries]);
 
   function update(id: string, patch: Partial<TaskEntry>) {
@@ -91,16 +118,13 @@ export default function Tasks({ lang, t, onClose }: Props) {
       entries: prev.entries.map((e) => {
         if (e.id !== id) return e;
         const nextDone = !e.done;
+        const today = new Date();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const isoDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
         return {
           ...e,
           done: nextDone,
-          completedAt: nextDone
-            ? new Date().toLocaleDateString(lang === "ar" ? "ar" : "en-US", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })
-            : undefined,
+          completedAt: nextDone ? isoDate : undefined,
         };
       }),
     }));
@@ -224,9 +248,9 @@ export default function Tasks({ lang, t, onClose }: Props) {
               key={e.id}
               entry={e}
               t={t}
+              lang={lang}
               direction={direction}
               editing={editingId === e.id}
-              editingDue={editingDueId === e.id}
               titleRef={editingId === e.id ? newTitleRef : null}
               locked={lock.locked}
               onToggle={() => toggle(e.id)}
@@ -238,10 +262,7 @@ export default function Tasks({ lang, t, onClose }: Props) {
               onStartEditTitle={() => setEditingId(e.id)}
               onCommitDue={(due) => {
                 update(e.id, { due: due || undefined });
-                setEditingDueId(null);
               }}
-              onStartEditDue={() => setEditingDueId(e.id)}
-              onCancelDue={() => setEditingDueId(null)}
               onToggleStar={() => update(e.id, { starred: !e.starred })}
               onDelete={() => remove(e.id)}
             />
@@ -274,9 +295,9 @@ export default function Tasks({ lang, t, onClose }: Props) {
                     key={e.id}
                     entry={e}
                     t={t}
+                    lang={lang}
                     direction={direction}
                     editing={editingId === e.id}
-                    editingDue={editingDueId === e.id}
                     titleRef={null}
                     locked={lock.locked}
                     onToggle={() => toggle(e.id)}
@@ -288,10 +309,7 @@ export default function Tasks({ lang, t, onClose }: Props) {
                     onStartEditTitle={() => setEditingId(e.id)}
                     onCommitDue={(due) => {
                       update(e.id, { due: due || undefined });
-                      setEditingDueId(null);
                     }}
-                    onStartEditDue={() => setEditingDueId(e.id)}
-                    onCancelDue={() => setEditingDueId(null)}
                     onToggleStar={() => update(e.id, { starred: !e.starred })}
                     onDelete={() => remove(e.id)}
                   />
@@ -309,9 +327,9 @@ export default function Tasks({ lang, t, onClose }: Props) {
 interface RowProps {
   entry: TaskEntry;
   t: Strings;
+  lang: Language;
   direction: "ltr" | "rtl";
   editing: boolean;
-  editingDue: boolean;
   titleRef: React.Ref<HTMLInputElement> | null;
   locked: boolean;
   onToggle: () => void;
@@ -319,8 +337,6 @@ interface RowProps {
   onCancelTitle: () => void;
   onStartEditTitle: () => void;
   onCommitDue: (due: string) => void;
-  onStartEditDue: () => void;
-  onCancelDue: () => void;
   onToggleStar: () => void;
   onDelete: () => void;
 }
@@ -328,9 +344,9 @@ interface RowProps {
 function TaskRow({
   entry,
   t,
+  lang,
   direction: _direction,
   editing,
-  editingDue,
   titleRef,
   locked,
   onToggle,
@@ -338,15 +354,17 @@ function TaskRow({
   onCancelTitle,
   onStartEditTitle,
   onCommitDue,
-  onStartEditDue,
-  onCancelDue,
   onToggleStar,
   onDelete,
 }: RowProps) {
   const [draftTitle, setDraftTitle] = useState(entry.title);
-  const [draftDue, setDraftDue] = useState(entry.due ?? "");
   useEffect(() => setDraftTitle(entry.title), [entry.title]);
-  useEffect(() => setDraftDue(entry.due ?? ""), [entry.due]);
+
+  const dueLabel = formatDue(entry.due, lang);
+  const completedLabel = entry.completedAt
+    ? formatDue(entry.completedAt, lang)
+    : "";
+  const overdue = !entry.done && isOverdue(entry.due);
 
   return (
     <div
@@ -442,71 +460,76 @@ function TaskRow({
           </div>
         )}
 
-        {/* Due chip */}
-        <div className="mt-1.5">
-          {editingDue && !locked ? (
-            <input
-              type="text"
-              value={draftDue}
-              onChange={(e) => setDraftDue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onCommitDue(draftDue.trim());
-                if (e.key === "Escape") onCancelDue();
-              }}
-              onBlur={() => onCommitDue(draftDue.trim())}
-              autoFocus
-              className="bg-transparent outline-none text-[12px]"
+        {/* Due chip — opens the native datetime picker on tap. The
+            hidden datetime-local input sits behind the styled chip so
+            the chip stays peach-on-sepia but iOS/Android still show
+            their full calendar + time UI. */}
+        <div className="mt-1.5 relative inline-block">
+          {entry.done && entry.completedAt ? (
+            <span
+              className="text-[12px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {t.tasksCompletedPrefix}: {completedLabel}
+            </span>
+          ) : entry.due ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full text-[12px]"
               style={{
-                color: "var(--gold-300)",
-                border: "1px solid var(--gold-400)",
-                borderRadius: 999,
+                color: overdue ? "var(--danger)" : "var(--gold-300)",
+                border: "1px solid",
+                borderColor: overdue
+                  ? "rgba(243, 160, 138, 0.5)"
+                  : "rgba(216, 146, 116, 0.3)",
                 padding: "3px 10px",
-                minWidth: 140,
+                cursor: locked ? "default" : "pointer",
+                position: "relative",
               }}
-              placeholder={t.tasksDuePlaceholder}
-            />
-          ) : (
-            <>
-              {entry.done && entry.completedAt ? (
-                <span
-                  className="text-[12px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {t.tasksCompletedPrefix}: {entry.completedAt}
-                </span>
-              ) : entry.due ? (
-                <button
-                  type="button"
-                  onClick={locked ? undefined : onStartEditDue}
-                  disabled={locked}
-                  className="inline-flex items-center gap-1.5 rounded-full text-[12px]"
+              title={locked ? undefined : t.tasksEditDue}
+            >
+              <CalendarGlyph />
+              <span>{dueLabel}</span>
+              {!locked && (
+                <input
+                  type="datetime-local"
+                  value={toDatetimeLocalValue(entry.due)}
+                  onChange={(e) => onCommitDue(e.target.value)}
+                  aria-label={t.tasksEditDue}
                   style={{
-                    color: isOverdue(entry.due) ? "var(--danger)" : "var(--gold-300)",
-                    border: "1px solid",
-                    borderColor: isOverdue(entry.due)
-                      ? "rgba(243, 160, 138, 0.5)"
-                      : "rgba(216, 146, 116, 0.3)",
-                    padding: "3px 10px",
-                    cursor: locked ? "default" : "pointer",
+                    position: "absolute",
+                    inset: 0,
+                    opacity: 0,
+                    cursor: "pointer",
+                    width: "100%",
+                    height: "100%",
                   }}
-                  title={locked ? undefined : t.tasksEditDue}
-                >
-                  <CalendarGlyph />
-                  <span>{entry.due}</span>
-                </button>
-              ) : (
-                !locked && (
-                  <button
-                    type="button"
-                    onClick={onStartEditDue}
-                    className="text-[12px] italic"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    + {t.tasksAddDue}
-                  </button>
-                )
+                />
               )}
-            </>
+            </span>
+          ) : (
+            !locked && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[12px] italic relative"
+                style={{ color: "var(--text-faint)", cursor: "pointer" }}
+              >
+                <CalendarGlyph />
+                <span>{t.tasksAddDue}</span>
+                <input
+                  type="datetime-local"
+                  value=""
+                  onChange={(e) => onCommitDue(e.target.value)}
+                  aria-label={t.tasksAddDue}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    opacity: 0,
+                    cursor: "pointer",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                />
+              </span>
+            )
           )}
         </div>
       </div>
@@ -594,14 +617,3 @@ function StarGlyph({ filled }: { filled: boolean }) {
   );
 }
 
-/**
- * Best-effort overdue detection. Recognises common Google-Tasks-style
- * phrasings ("Due X ago" or anything starting with a past month-day).
- * Returns false for "Today" / "Tomorrow" / unparseable strings — the
- * cost of a false negative (peach pill instead of red) is small.
- */
-function isOverdue(due: string): boolean {
-  if (!due) return false;
-  if (/ago/i.test(due)) return true;
-  return false;
-}

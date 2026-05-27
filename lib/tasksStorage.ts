@@ -7,8 +7,12 @@ const KEY = "wedding-playlist:v1:tasks";
  * any persisted doc with a missing or older version is replaced by
  * the current default. Once the user edits, the new version stamp is
  * saved alongside their changes and survives.
+ *
+ * v2: due/completedAt switched from free-form display strings to ISO
+ * datetimes so the native datetime picker can edit them and so we
+ * can compute relative phrasing ("Today, 8:00 PM").
  */
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -63,37 +67,39 @@ export function defaultTasks(): TaskDoc {
     version: SEED_VERSION,
     entries: [
       // ── Open ─────────────────────────────────────────────
-      mk("تسديد السيارة", "Due 1 week ago", false),
-      mk("دلكة", "Today", false),
-      mk("بتجي رويدا عندي قبل زواج الرجال", "Tomorrow, 6:00 PM", false),
-      mk("اضافر قبل الزواج بيوم", "Tomorrow, 8:00 PM", false),
-      mk("عشاء الرجال", "Tomorrow, 9:30 AM", false),
-      mk("زفة الرجال", "Fri, 29 May at 11:30 PM", false),
-      mk("زفة رويدا", "Fri, 29 May at 11:34 PM", false),
-      mk("عشاء الحريم", "Sat, 30 May at 1:00 AM", false),
-      mk("الدخلي الي الله يجيبها", "Sat, 30 May at 3:00 AM", false),
-      mk("رموش موعد 30 بالصالون وبنفس الوقت شعر", "Sat, 30 May at 5:00 PM", false, {
+      // ISO dates / datetimes so the native picker can edit them.
+      // Anchor: wedding day = Friday 2026-05-29.
+      mk("تسديد السيارة", "2026-05-20", false),
+      mk("دلكة", "2026-05-27", false),
+      mk("بتجي رويدا عندي قبل زواج الرجال", "2026-05-28T18:00", false),
+      mk("اضافر قبل الزواج بيوم", "2026-05-28T20:00", false),
+      mk("عشاء الرجال", "2026-05-28T09:30", false),
+      mk("زفة الرجال", "2026-05-29T23:30", false),
+      mk("زفة رويدا", "2026-05-29T23:34", false),
+      mk("عشاء الحريم", "2026-05-30T01:00", false),
+      mk("الدخلي الي الله يجيبها", "2026-05-30T03:00", false),
+      mk("رموش موعد 30 بالصالون وبنفس الوقت شعر", "2026-05-30T17:00", false, {
         note: "Nailsholic",
       }),
-      mk("بنروح اهل زوجتي", "Sat, 30 May at 7:00 PM", false),
-      mk("نروح اهلي", "Sun, 31 May at 7:10 PM", false),
-      mk("السفرة الذهاب", "Tue, 2 Jun at 3:00 PM", false),
-      mk("العودة", "Thu, 11 Jun at 6:30 PM", false),
-      mk("العودة للاجازة", "Wed, 24 Jun at 8:00 AM", false),
+      mk("بنروح اهل زوجتي", "2026-05-30T19:00", false),
+      mk("نروح اهلي", "2026-05-31T19:10", false),
+      mk("السفرة الذهاب", "2026-06-02T15:00", false),
+      mk("العودة", "2026-06-11T18:30", false),
+      mk("العودة للاجازة", "2026-06-24T08:00", false),
 
       // ── Completed ────────────────────────────────────────
-      mk("ليزر", undefined, true, { completedAt: "Sun, 24 May" }),
+      mk("ليزر", undefined, true, { completedAt: "2026-05-24" }),
       mk(
         "تجهيز شنطة يوم الزواج ومالعد الزواج الي بالفندق واللستة",
         undefined,
         true,
-        { completedAt: "Sat, 23 May" },
+        { completedAt: "2026-05-23" },
       ),
-      mk("رينساج", undefined, true, { completedAt: "Fri, 22 May" }),
-      mk("حمام مغربي", undefined, true, { completedAt: "Fri, 22 May" }),
-      mk("اسنان", undefined, true, { completedAt: "Fri, 22 May" }),
-      mk("العجلان", undefined, true, { completedAt: "Mon, 18 May" }),
-      mk("رتوش شفايف", undefined, true, { completedAt: "Mon, 18 May" }),
+      mk("رينساج", undefined, true, { completedAt: "2026-05-22" }),
+      mk("حمام مغربي", undefined, true, { completedAt: "2026-05-22" }),
+      mk("اسنان", undefined, true, { completedAt: "2026-05-22" }),
+      mk("العجلان", undefined, true, { completedAt: "2026-05-18" }),
+      mk("رتوش شفايف", undefined, true, { completedAt: "2026-05-18" }),
     ],
   };
 }
