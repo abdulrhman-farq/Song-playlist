@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import AppShell from "@/components/AppShell";
 import Sidebar from "@/components/Sidebar";
 import PlaylistHero from "@/components/PlaylistHero";
+import HomeRecap from "@/components/HomeRecap";
 import TrackList from "@/components/TrackList";
 import UploadPanel, { type UploadProgress } from "@/components/UploadPanel";
 import { extractAudio, isVideoFile } from "@/lib/audioExtraction";
@@ -1273,6 +1274,17 @@ export default function PlaylistApp() {
           hasYouTubeTracks={hasYouTubeTracks}
         />
         </EditableBlock>
+
+        {/* At-a-glance recap of every feature — taps jump straight in. */}
+        <HomeRecap
+          lang={lang}
+          t={t}
+          tracks={tracks}
+          totalSeconds={totalSeconds}
+          sections={sections}
+          onOpenTimeline={handleOpenTimeline}
+          onOpenTasks={handleOpenTasks}
+        />
 
         {/* Composer — upload + YouTube. Hidden in wedding-day Lock mode
             so the laptop is safe to hand to anyone during the ceremony. */}
