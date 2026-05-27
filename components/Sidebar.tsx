@@ -504,7 +504,7 @@ function ActionRow({
 }
 
 /**
- * Tiny presence pill under the brand tile: pulsing emerald dot +
+ * Tiny presence pill under the brand tile: pulsing peach dot +
  * "Live · synced" when the Supabase realtime channel is SUBSCRIBED,
  * a muted dot + "Offline" otherwise. Hidden until we know the
  * status (parent omits the prop = SSR/no-op).
@@ -512,7 +512,9 @@ function ActionRow({
 function LiveIndicator({ status }: { status?: RealtimeStatus }) {
   if (!status) return null;
   const isLive = status === "live";
-  const dotColor = isLive ? "#34d399" : "#7c7c7c";
+  // Live = mid peach so it reads as positive within the monochrome
+  // system. Offline = muted neutral. No leftover emerald greens.
+  const dotColor = isLive ? "#ecb89a" : "#7c7c7c";
   const labelColor = isLive ? "var(--text-muted)" : "var(--text-faint)";
   const label =
     status === "live"
@@ -537,7 +539,7 @@ function LiveIndicator({ status }: { status?: RealtimeStatus }) {
           borderRadius: 999,
           background: dotColor,
           boxShadow: isLive
-            ? "0 0 0 0 rgba(52,211,153,0.55)"
+            ? "0 0 0 0 rgba(236,184,154,0.55)"
             : "none",
           animation: isLive ? "wp-live-pulse 1.8s ease-in-out infinite" : undefined,
           flexShrink: 0,
@@ -555,13 +557,13 @@ function LiveIndicator({ status }: { status?: RealtimeStatus }) {
       <style jsx>{`
         @keyframes wp-live-pulse {
           0% {
-            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+            box-shadow: 0 0 0 0 rgba(236, 184, 154, 0.55);
           }
           70% {
-            box-shadow: 0 0 0 6px rgba(52, 211, 153, 0);
+            box-shadow: 0 0 0 6px rgba(236, 184, 154, 0);
           }
           100% {
-            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+            box-shadow: 0 0 0 0 rgba(236, 184, 154, 0);
           }
         }
       `}</style>
