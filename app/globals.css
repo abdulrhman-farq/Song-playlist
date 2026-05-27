@@ -115,16 +115,247 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .track-row {
-  transition: background 0.18s ease, transform 0.15s ease;
+  transition: background 0.18s ease, border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
 }
 .track-row.dragging {
   opacity: 0.4;
 }
-.track-row.drop-above {
-  box-shadow: inset 0 2px 0 0 #d89274;
+/* Soft drop indicators — 1px peach line with subtle glow, no harsh fill */
+.track-row.drop-above::before,
+.track-row.drop-below::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: #d89274;
+  box-shadow: 0 0 6px rgba(216, 146, 116, 0.55);
+  pointer-events: none;
+  z-index: 3;
 }
-.track-row.drop-below {
-  box-shadow: inset 0 -2px 0 0 #d89274;
+.track-row.drop-above::before {
+  top: -1px;
+}
+.track-row.drop-below::before {
+  bottom: -1px;
+}
+
+/* Swipe-reveal layer for the row. We translate the surface to expose
+   the action drawer underneath. Spring-snap timing uses cubic-bezier. */
+.track-row-surface {
+  position: relative;
+  z-index: 2;
+  /* Inherit the row's background tint so the surface stays opaque
+     enough to occlude the drawer behind it when closed. */
+  background: var(--track-row-bg, #faf5ec);
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+  touch-action: pan-y;
+}
+.track-row-surface.dragging-touch {
+  transition: none;
+}
+.track-row-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 16px;
+  z-index: 1;
+  pointer-events: none;
+}
+.track-row-drawer.is-open {
+  pointer-events: auto;
+}
+[dir="rtl"] .track-row-drawer {
+  right: auto;
+  left: 0;
+}
+.track-row-drawer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 0.5px solid rgba(58, 44, 32, 0.18);
+  background: rgba(250, 245, 236, 0.94);
+  color: #6b4a35;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.track-row-drawer-btn:hover {
+  background: #faf5ec;
+  color: #3a2c20;
+  transform: translateY(-1px);
+}
+.track-row-drawer-btn.is-danger {
+  color: #c97b5b;
+  border-color: rgba(201, 123, 91, 0.35);
+}
+
+/* Subtle desktop hover icon button — smaller, lower opacity */
+.track-row-quick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #8c6a4f;
+  opacity: 0;
+  transition: opacity 0.18s ease, color 0.15s ease;
+  background: transparent;
+  border: none;
+}
+.track-row:hover .track-row-quick {
+  opacity: 0.55;
+}
+.track-row-quick:hover {
+  opacity: 1 !important;
+  color: #3a2c20;
+}
+.track-row-quick.is-danger:hover {
+  color: #c97b5b;
+}
+
+/* Long-press popover — tiny peach card */
+.lp-popover {
+  position: absolute;
+  z-index: 30;
+  min-width: 168px;
+  background: #faf5ec;
+  border: 0.5px solid rgba(216, 146, 116, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 16px 32px -16px rgba(58, 44, 32, 0.45),
+    0 0 0 1px rgba(216, 146, 116, 0.12);
+  padding: 4px;
+  animation: lp-pop 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+@keyframes lp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.lp-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 15px;
+  color: #3a2c20;
+  background: transparent;
+  border: none;
+  text-align: start;
+  transition: background 0.12s;
+}
+.lp-popover-item:hover,
+.lp-popover-item:focus-visible {
+  background: rgba(216, 146, 116, 0.12);
+  outline: none;
+}
+.lp-popover-item.is-danger {
+  color: #c97b5b;
+}
+.lp-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: transparent;
+}
+
+/* Peach halo around the now-playing thumbnail */
+.now-halo {
+  position: relative;
+}
+.now-halo::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  border: 1px solid rgba(216, 146, 116, 0.55);
+  box-shadow: 0 0 0 2px rgba(216, 146, 116, 0.08),
+    0 0 18px rgba(216, 146, 116, 0.35);
+  animation: halo-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes halo-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.035);
+  }
+}
+
+/* Tiny equaliser mark next to the title (when current track is playing) */
+.eq-mini {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 10px;
+  vertical-align: -1px;
+}
+.eq-mini span {
+  width: 1.5px;
+  background: #d89274;
+  border-radius: 1px;
+  animation: eq 0.9s ease-in-out infinite;
+}
+.eq-mini span:nth-child(1) {
+  animation-delay: 0s;
+  height: 40%;
+}
+.eq-mini span:nth-child(2) {
+  animation-delay: 0.2s;
+  height: 80%;
+}
+.eq-mini span:nth-child(3) {
+  animation-delay: 0.4s;
+  height: 55%;
+}
+
+/* Warning dot — used inline with the title when the track has a real warning */
+.warn-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #c0584b;
+  box-shadow: 0 0 0 2px rgba(192, 88, 75, 0.18);
+  margin-inline-start: 8px;
+  vertical-align: 2px;
+}
+
+/* Sticky section header — peach-on-warm-sepia backdrop blur for legibility */
+.section-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(250, 245, 236, 0.82);
+  backdrop-filter: saturate(120%) blur(8px);
+  -webkit-backdrop-filter: saturate(120%) blur(8px);
+  border-bottom: 0.5px solid rgba(216, 146, 116, 0.28);
+  margin-inline: -8px;
+  padding-inline: 8px;
 }
 
 .btn-iconic {
