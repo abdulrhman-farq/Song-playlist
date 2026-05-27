@@ -245,8 +245,10 @@ export default function Sidebar({
         <div
           className="rounded-xl p-3"
           style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid var(--line-subtle)",
+            // Light peach wash so the stats card lifts off the warm
+            // sidebar panel — feels like a sub-panel, not a flat hole.
+            background: "rgba(216, 146, 116, 0.06)",
+            border: "1px solid rgba(216, 146, 116, 0.18)",
           }}
         >
           <div className="label-micro mb-1">{playlistName}</div>
@@ -425,26 +427,32 @@ export default function Sidebar({
         <IconMenu size={20} />
       </button>
 
-      {/* Desktop persistent sidebar */}
+      {/* Desktop persistent sidebar — warm sepia panel slightly
+          LIGHTER than the main app background so it reads as a
+          translucent paper card floating over the canvas, instead of
+          a black gap. Uses a gradient to subtle peach warmth. */}
       <aside
         className="hidden lg:flex flex-col fixed top-0 bottom-0 z-30"
         style={{
           width: 280,
           insetInlineStart: 0,
-          background: "rgba(10, 10, 10, 0.6)",
-          backdropFilter: "blur(28px) saturate(160%)",
-          WebkitBackdropFilter: "blur(28px) saturate(160%)",
-          borderInlineEnd: "1px solid var(--line-subtle)",
+          background:
+            "linear-gradient(180deg, rgba(58, 44, 34, 0.65) 0%, rgba(42, 32, 26, 0.72) 100%)",
+          backdropFilter: "blur(28px) saturate(180%)",
+          WebkitBackdropFilter: "blur(28px) saturate(180%)",
+          borderInlineEnd: "1px solid rgba(216, 146, 116, 0.16)",
+          boxShadow: "8px 0 32px -16px rgba(0, 0, 0, 0.5)",
         }}
       >
         {content}
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — same warm-paper feel, slightly more opaque
+          since it sits on top of the playlist with a dim scrim. */}
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-50"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+          style={{ background: "rgba(26,19,16,0.6)", backdropFilter: "blur(6px)" }}
           onClick={close}
         >
           <div
@@ -452,10 +460,12 @@ export default function Sidebar({
             style={{
               insetInlineStart: 0,
               width: "min(320px, 88vw)",
-              background: "rgba(10, 10, 10, 0.96)",
-              backdropFilter: "blur(28px) saturate(160%)",
-              WebkitBackdropFilter: "blur(28px) saturate(160%)",
-              borderInlineEnd: "1px solid var(--line-soft)",
+              background:
+                "linear-gradient(180deg, rgba(62, 47, 37, 0.96) 0%, rgba(46, 35, 28, 0.96) 100%)",
+              backdropFilter: "blur(28px) saturate(180%)",
+              WebkitBackdropFilter: "blur(28px) saturate(180%)",
+              borderInlineEnd: "1px solid rgba(216, 146, 116, 0.18)",
+              boxShadow: "8px 0 32px -16px rgba(0, 0, 0, 0.5)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
