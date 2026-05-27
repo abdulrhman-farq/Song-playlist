@@ -255,7 +255,7 @@ function SectionBlock({
 
       {/* Section header — title + meta on one row, toolbar on its own row below. */}
       <header
-        className="px-2 mb-3"
+        className="px-2 mb-3 relative"
         onDragOver={
           section ? (e) => onSectionHeaderDragOver?.(e) : undefined
         }
@@ -263,13 +263,56 @@ function SectionBlock({
           section ? (e) => onSectionHeaderDragLeave?.(e) : undefined
         }
         onDrop={section ? (e) => onSectionHeaderDrop?.(e) : undefined}
+        style={
+          hasActiveHere
+            ? {
+                background:
+                  "linear-gradient(90deg, rgba(212,175,55,0.10) 0%, rgba(212,175,55,0.04) 50%, transparent 100%)",
+                borderRadius: 10,
+                paddingInline: 12,
+                paddingBlock: 8,
+                boxShadow: "inset 3px 0 0 var(--gold-400)",
+              }
+            : undefined
+        }
       >
+        {hasActiveHere && (
+          <div
+            aria-hidden
+            className="absolute pointer-events-none gpu"
+            style={{
+              insetInlineStart: -16,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "var(--gold-400)",
+              boxShadow:
+                "0 0 12px rgba(212,175,55,0.75), 0 0 24px rgba(216,146,116,0.55)",
+              animation: "glow-pulse 2.2s ease-in-out infinite",
+            }}
+          />
+        )}
         <div className="min-w-0">
           <div
             className="eyebrow flex items-center gap-2"
-            style={{ color: "var(--gold-400)" }}
+            style={{
+              color: hasActiveHere ? "var(--gold-300)" : "var(--gold-400)",
+            }}
           >
             <span>{t.sections}</span>
+            {hasActiveHere && (
+              <span
+                style={{
+                  color: "var(--gold-300)",
+                  letterSpacing: "0.18em",
+                  fontWeight: 600,
+                }}
+              >
+                · {t.nowPlaying}
+              </span>
+            )}
           </div>
           <h2
             className="font-display italic mt-1 truncate"

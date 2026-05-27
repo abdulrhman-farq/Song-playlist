@@ -25,6 +25,8 @@ interface Props {
   t: Strings;
   tracks: Track[];
   currentId: string | null;
+  /** Track that will play after the current one ends (respects shuffle/repeat). */
+  nextTrack?: Track | null;
   isPlaying: boolean;
   position: number;
   duration: number;
@@ -49,6 +51,7 @@ function BottomPlayerImpl({
   t,
   tracks,
   currentId,
+  nextTrack,
   isPlaying,
   position,
   duration,
@@ -235,6 +238,30 @@ function BottomPlayerImpl({
                 <span>—</span>
               )}
             </div>
+            {/* Next-up preview — one-glance heads-up for the DJ */}
+            {current && nextTrack && nextTrack.id !== current.id && (
+              <div
+                className="mt-0.5 truncate text-[10px]"
+                style={{
+                  color: "var(--text-faint)",
+                  letterSpacing: "0.02em",
+                }}
+                title={`Next: ${nextTrack.title}`}
+              >
+                <span
+                  style={{
+                    color: "var(--gold-300)",
+                    fontFamily: "var(--font-tracked)",
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    marginInlineEnd: 6,
+                  }}
+                >
+                  Next
+                </span>
+                {nextTrack.title}
+              </div>
+            )}
           </div>
         </div>
 

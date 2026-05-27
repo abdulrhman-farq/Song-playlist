@@ -12,6 +12,8 @@ import YouTubeAddPanel from "@/components/YouTubeAddPanel";
 import EmptyState from "@/components/EmptyState";
 import BottomPlayer from "@/components/BottomPlayer";
 import Toast from "@/components/Toast";
+import { ConfirmDialog, PromptDialog } from "@/components/Dialog";
+import { LockModeProvider, UnlockedOnly, useLockMode } from "@/lib/lockMode";
 import EditModeToolbar from "@/components/EditModeToolbar";
 import EditableBlock from "@/components/EditableBlock";
 import EditableText from "@/components/EditableText";
@@ -146,6 +148,15 @@ export default function PlaylistApp() {
   // Trim editor
   const [trimEditId, setTrimEditId] = useState<string | null>(null);
   const [clipsWorkbenchOpen, setClipsWorkbenchOpen] = useState(false);
+
+  /** Single state-machine for the prompt/confirm dialogs that used
+   *  to be browser-native `prompt()` / `confirm()` calls. */
+  type DialogState =
+    | { kind: "none" }
+    | { kind: "add-section" }
+    | { kind: "rename-section"; id: string; current: string }
+    | { kind: "confirm-clear" };
+  const [dialog, setDialog] = useState<DialogState>({ kind: "none" });
   // Timeline overlay
   const [timelineOpen, setTimelineOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
@@ -425,22 +436,16 @@ export default function PlaylistApp() {
 
   /* ── Section ops ───────────────────────────────────────── */
   const handleAddSection = useCallback(() => {
-    const label = prompt(t.addSection + " — " + t.renameSection);
-    if (!label) return;
-    void rt.addSection(label.trim());
-  }, [rt, t.addSection, t.renameSection]);
+    setDialog({ kind: "add-section" });
+  }, []);
 
   const handleRenameSection = useCallback(
     (id: string) => {
       const current = sections.find((s) => s.id === id);
       if (!current) return;
-      const label = prompt(t.renameSection, current.label);
-      if (label == null) return;
-      const trimmed = label.trim();
-      if (!trimmed) return;
-      void rt.renameSection(id, trimmed);
+      setDialog({ kind: "rename-section", id, current: current.label });
     },
-    [rt, sections, t.renameSection],
+    [sections],
   );
 
   const handleDeleteSection = useCallback(
@@ -555,8 +560,11 @@ export default function PlaylistApp() {
     void rt.moveTrackToSection(fromId, sectionId);
   }
 
+  const handleClearAllRequest = useCallback(() => {
+    setDialog({ kind: "confirm-clear" });
+  }, []);
+
   const handleClearAll = useCallback(async () => {
-    if (!confirm(t.confirmClear)) return;
     // Local cleanup first (blobs/object URLs live on this device)
     const uploadIds = tracks
       .filter((tr) => tr.source === "upload")
@@ -894,6 +902,23 @@ export default function PlaylistApp() {
     return n;
   }
 
+  /** What plays after the current track ends (respects shuffle/repeat).
+   *  Used by BottomPlayer's "Next up" preview. Doesn't predict shuffle's
+   *  exact pick — shows the next sequential as a stand-in when shuffle is
+   *  on, marking that the order is randomised. */
+  const nextUpTrack: Track | null = useMemo(() => {
+    if (orderedTracks.length === 0) return null;
+    const i = orderedTracks.findIndex((x) => x.id === currentId);
+    if (i < 0) return orderedTracks[0];
+    if (repeat) return orderedTracks[i];
+    let n = i + 1;
+    if (n >= orderedTracks.length) {
+      if (orderedTracks.length === 1) return null;
+      n = 0; // wraps
+    }
+    return orderedTracks[n];
+  }, [orderedTracks, currentId, repeat]);
+
   const handleNext = useCallback(() => {
     const i = orderedTracks.findIndex((x) => x.id === currentId);
     const n = nextIndex(orderedTracks, i, 1);
@@ -1164,6 +1189,7 @@ export default function PlaylistApp() {
 
   return (
     <EditModeProvider>
+    <LockModeProvider>
     <EditModeToolbar />
     <AppShell
       lang={lang}
@@ -1183,7 +1209,7 @@ export default function PlaylistApp() {
           onExport={handleExport}
           onSamples={handleLoadSamples}
           onValidate={handleValidate}
-          onClearAll={handleClearAll}
+          onClearAll={handleClearAllRequest}
           onAddSection={handleAddSection}
           onScrollToSection={scrollToSection}
           onOpenTimeline={handleOpenTimeline}
@@ -1197,6 +1223,7 @@ export default function PlaylistApp() {
             t={t}
             tracks={orderedTracks}
             currentId={currentId}
+            nextTrack={nextUpTrack}
             isPlaying={isPlaying}
             position={position}
             duration={duration}
@@ -1239,17 +1266,20 @@ export default function PlaylistApp() {
         />
         </EditableBlock>
 
-        {/* Composer — upload + YouTube */}
-        <EditableBlock editKey="composer" label="Composer (upload + YouTube)">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
-          <UploadPanel
-            t={t}
-            onAddFiles={handleAddFiles}
-            progress={uploadProgress}
-          />
-          <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
-        </div>
-        </EditableBlock>
+        {/* Composer — upload + YouTube. Hidden in wedding-day Lock mode
+            so the laptop is safe to hand to anyone during the ceremony. */}
+        <UnlockedOnly>
+          <EditableBlock editKey="composer" label="Composer (upload + YouTube)">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up">
+            <UploadPanel
+              t={t}
+              onAddFiles={handleAddFiles}
+              progress={uploadProgress}
+            />
+            <YouTubeAddPanel t={t} onAddYouTube={handleAddYouTube} />
+          </div>
+          </EditableBlock>
+        </UnlockedOnly>
 
         {/* Track list or empty state */}
         {tracks.length === 0 ? (
@@ -1347,6 +1377,51 @@ export default function PlaylistApp() {
         />
       )}
 
+      <PromptDialog
+        open={dialog.kind === "add-section"}
+        title={t.addSection}
+        description={t.renameSection}
+        placeholder={t.sectionUnassigned}
+        confirmLabel={t.add}
+        cancelLabel={t.cancel}
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onSubmit={(label) => {
+          void rt.addSection(label);
+          setDialog({ kind: "none" });
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
+      <PromptDialog
+        open={dialog.kind === "rename-section"}
+        title={t.renameSection}
+        defaultValue={dialog.kind === "rename-section" ? dialog.current : ""}
+        confirmLabel={t.save}
+        cancelLabel={t.cancel}
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onSubmit={(label) => {
+          if (dialog.kind === "rename-section") {
+            void rt.renameSection(dialog.id, label);
+          }
+          setDialog({ kind: "none" });
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
+      <ConfirmDialog
+        open={dialog.kind === "confirm-clear"}
+        title={t.clearAll}
+        description={t.confirmClear}
+        confirmLabel={t.clearAll}
+        cancelLabel={t.cancel}
+        destructive
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        onConfirm={() => {
+          void handleClearAll();
+        }}
+        onClose={() => setDialog({ kind: "none" })}
+      />
+
       {timelineOpen && (
         <Timeline
           lang={lang}
@@ -1355,6 +1430,7 @@ export default function PlaylistApp() {
         />
       )}
     </AppShell>
+    </LockModeProvider>
     </EditModeProvider>
   );
 }

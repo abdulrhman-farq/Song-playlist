@@ -9,6 +9,7 @@ import {
   IconPlus,
   IconTrash,
 } from "@/components/icons";
+import { ConfirmDialog } from "@/components/Dialog";
 import {
   defaultTimeline,
   loadTimeline,
@@ -252,6 +253,7 @@ export default function Timeline({ lang, t, onClose }: Props) {
   const [editing, setEditing] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -315,8 +317,7 @@ export default function Timeline({ lang, t, onClose }: Props) {
     setDoc((d) => ({ ...d, entries: d.entries.filter((e) => e.id !== id) }));
   }
   function reset() {
-    if (!confirm(t.timelineResetConfirm)) return;
-    setDoc(defaultTimeline());
+    setConfirmResetOpen(true);
   }
 
   /** Update any string field on the doc. */
@@ -1070,6 +1071,17 @@ export default function Timeline({ lang, t, onClose }: Props) {
         </div>
       </div>
       </div>
+      <ConfirmDialog
+        open={confirmResetOpen}
+        title={t.timelineReset}
+        description={t.timelineResetConfirm}
+        confirmLabel={t.timelineReset}
+        cancelLabel={t.cancel}
+        destructive
+        dir="rtl"
+        onConfirm={() => setDoc(defaultTimeline())}
+        onClose={() => setConfirmResetOpen(false)}
+      />
     </div>
   );
 }

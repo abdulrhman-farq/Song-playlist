@@ -21,6 +21,7 @@ import {
   IconTrash,
 } from "@/components/icons";
 import { useEditMode } from "@/lib/editMode";
+import { useLockMode } from "@/lib/lockMode";
 import { fmtTime } from "@/lib/format";
 import type { Strings } from "@/lib/i18n";
 import type { RealtimeStatus } from "@/lib/realtimeSync";
@@ -83,6 +84,7 @@ export default function Sidebar({
   }, [open]);
 
   const edit = useEditMode();
+  const lock = useLockMode();
 
   function close() {
     setOpen(false);
@@ -264,17 +266,21 @@ export default function Sidebar({
 
       <div className="divider mx-5 mt-5" />
 
-      {/* Actions */}
+      {/* Actions — destructive ones hidden in Lock mode */}
       <div className="px-3 py-4 space-y-1">
-        <ActionRow icon={<IconSparkle size={16} />} onClick={actAndClose(onSamples)}>
-          <EditableText editKey="sidebar.actions.sample" fallback={t.sample} />
-        </ActionRow>
-        <ActionRow icon={<IconImport size={16} />} onClick={actAndClose(onImport)}>
-          <EditableText
-            editKey="sidebar.actions.importJson"
-            fallback={t.importJson}
-          />
-        </ActionRow>
+        {!lock.locked && (
+          <>
+            <ActionRow icon={<IconSparkle size={16} />} onClick={actAndClose(onSamples)}>
+              <EditableText editKey="sidebar.actions.sample" fallback={t.sample} />
+            </ActionRow>
+            <ActionRow icon={<IconImport size={16} />} onClick={actAndClose(onImport)}>
+              <EditableText
+                editKey="sidebar.actions.importJson"
+                fallback={t.importJson}
+              />
+            </ActionRow>
+          </>
+        )}
         <ActionRow
           icon={<IconExport size={16} />}
           onClick={actAndClose(onExport)}
@@ -297,7 +303,7 @@ export default function Sidebar({
             />
           </ActionRow>
         )}
-        {onOpenClipsWorkbench && (
+        {!lock.locked && onOpenClipsWorkbench && (
           <ActionRow
             icon={<IconMusic size={16} />}
             onClick={actAndClose(onOpenClipsWorkbench)}
@@ -308,7 +314,7 @@ export default function Sidebar({
             />
           </ActionRow>
         )}
-        {tracks.length > 0 && (
+        {!lock.locked && tracks.length > 0 && (
           <ActionRow
             icon={<IconTrash size={16} />}
             onClick={actAndClose(onClearAll)}
@@ -323,7 +329,40 @@ export default function Sidebar({
       </div>
 
       <div className="mt-auto px-3 pb-4 space-y-1">
-        {edit.admin && (
+        {/* Wedding-day Lock toggle — when ON, hides the composer, the
+            destructive actions, the edit-page entry, and (in TrackList)
+            the rename/delete/drag/trim affordances. */}
+        <button
+          type="button"
+          onClick={() => lock.setLocked(!lock.locked)}
+          className="nav-row"
+          aria-pressed={lock.locked}
+          style={{
+            color: lock.locked ? "#050505" : "var(--gold-300)",
+            background: lock.locked ? "var(--gold-400)" : undefined,
+            fontWeight: lock.locked ? 600 : undefined,
+          }}
+          title={
+            lock.locked
+              ? "Unlock — full editing"
+              : "Lock for the ceremony — disables edit/drag/delete"
+          }
+        >
+          <IconShield size={16} />
+          <span>
+            {lock.locked ? "Locked for ceremony" : "Lock for ceremony"}
+          </span>
+          <span
+            className="ms-auto label-micro"
+            style={{
+              color: lock.locked ? "#050505" : "var(--gold-400)",
+              opacity: lock.locked ? 0.85 : 1,
+            }}
+          >
+            {lock.locked ? "ON" : "OFF"}
+          </span>
+        </button>
+        {edit.admin && !lock.locked && (
           <>
             <button
               type="button"
