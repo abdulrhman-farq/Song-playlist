@@ -185,13 +185,16 @@ function TrackRowImpl({
                 color: titleColor,
                 fontSize: 15,
                 fontWeight: isCurrent ? 600 : 500,
-                // Full title always visible — wraps to as many lines
-                // as the title needs instead of clipping with an
-                // ellipsis. word-break: break-word handles long URLs
-                // or unbroken Arabic strings.
+                // Allow wrap on word boundaries but cap at 2 lines so
+                // the row stays compact. No word-break — words stay
+                // whole, sitting side-by-side horizontally, then wrap
+                // to a second line only when needed.
                 whiteSpace: "normal",
-                wordBreak: "break-word",
                 lineHeight: 1.3,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
               }}
               title={track.title}
             >
