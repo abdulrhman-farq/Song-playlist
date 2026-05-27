@@ -128,9 +128,12 @@ function BottomPlayerImpl({
   if (collapsed) {
     return (
       <div
-        className="fixed bottom-3 gpu"
+        className="fixed gpu"
         style={{
-          insetInlineEnd: 12,
+          // Stack the safe-area inset on top of the base 12px so the
+          // pill never disappears behind the browser's bottom toolbar.
+          bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+          insetInlineEnd: "calc(12px + env(safe-area-inset-right, 0px))",
           zIndex: "var(--z-player)" as unknown as number,
           display: "flex",
           alignItems: "center",
@@ -174,7 +177,11 @@ function BottomPlayerImpl({
     <div
       className="fixed bottom-0 left-0 right-0 gpu"
       style={{
-        padding: "8px 14px 10px",
+        // Add the safe-area inset to the bottom padding so the seek
+        // bar + transport row don't get hidden behind the browser
+        // toolbar / iOS home indicator.
+        padding:
+          "8px calc(14px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px))",
         background:
           "linear-gradient(180deg, transparent 0%, rgba(26,19,16,0.88) 28%, rgba(26,19,16,0.96) 100%)",
         backdropFilter: "blur(24px) saturate(180%)",

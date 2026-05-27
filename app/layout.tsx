@@ -103,6 +103,10 @@ export const viewport: Viewport = {
   themeColor: "#1a1310",
   width: "device-width",
   initialScale: 1,
+  // viewport-fit=cover lets us read env(safe-area-inset-*) so the
+  // bottom player + collapsed pill stay clear of the iOS home
+  // indicator and the Android/Brave browser bottom toolbar.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
