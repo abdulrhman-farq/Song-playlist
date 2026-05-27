@@ -65,3 +65,54 @@ export function whatsappShareUrl(
   const phone = guest.phone.replace(/\D/g, "");
   return `https://wa.me/${phone}?text=${text}`;
 }
+
+/**
+ * Parse a free-form pasted list into guest entries. Accepts:
+ *  - One name per line (minimum)
+ *  - Comma / tab / pipe separated: name, phone, partySize, side, note
+ * Empty lines and the first line if it looks like a header (contains
+ * "name" / "اسم") are skipped.
+ */
+export function parseBulkGuests(raw: string): GuestEntry[] {
+  const out: GuestEntry[] = [];
+  const lines = raw.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    // Skip a header row if first line looks like one
+    if (
+      i === 0 &&
+      /\b(name|اسم|guest|مدعو)\b/i.test(line) &&
+      /[,|\t]/.test(line)
+    ) {
+      continue;
+    }
+    const cells = line
+      .split(/\s*[,|\t]\s*/)
+      .map((c) => c.trim())
+      .filter(Boolean);
+    const [name, phone, partySize, side, note] = cells;
+    if (!name) continue;
+    const entry: GuestEntry = {
+      id: uid(),
+      name,
+      status: "pending",
+      partySize: 1,
+    };
+    if (phone) entry.phone = phone;
+    if (partySize) {
+      const n = parseInt(partySize, 10);
+      if (Number.isFinite(n) && n > 0) entry.partySize = n;
+    }
+    if (side === "bride" || side === "groom" || side === "both") {
+      entry.side = side;
+    } else if (side === "العروس") {
+      entry.side = "bride";
+    } else if (side === "العريس") {
+      entry.side = "groom";
+    }
+    if (note) entry.note = note;
+    out.push(entry);
+  }
+  return out;
+}

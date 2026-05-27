@@ -308,6 +308,12 @@ export const strings = {
     guestsShareWhatsapp: "Share via WhatsApp",
     guestsShareMessage:
       "تشرّفنا بدعوتكم لحضور حفل زفاف رويـدا و عبدالرحمن · الجمعة ٢٩ مايو ٢٠٢٦",
+    guestsImport: "Bulk import",
+    guestsImportHint:
+      "Paste one guest per line. Format: name, phone, seats, side (bride/groom), note",
+    guestsImportPlaceholder:
+      "Ahmed Saleh, +966 50 123 4567, 2, groom\nRuwaida's mother, +966 55 987 6543, 1, bride\n…",
+    guestsImportConfirm: "Add all",
     // === GUESTS END ===
   },
   ar: {
@@ -615,6 +621,12 @@ export const strings = {
     guestsShareWhatsapp: "مشاركة عبر واتساب",
     guestsShareMessage:
       "تشرّفنا بدعوتكم لحضور حفل زفاف رويـدا و عبدالرحمن · الجمعة ٢٩ مايو ٢٠٢٦",
+    guestsImport: "استيراد دفعة",
+    guestsImportHint:
+      "ألصق مدعوًا في كل سطر. الصيغة: الاسم، الجوال، المقاعد، الطرف (العروس/العريس)، ملاحظة",
+    guestsImportPlaceholder:
+      "أحمد صالح، ‎+966 50 123 4567، 2، العريس\nأم العروس، ‎+966 55 987 6543، 1، العروس\n…",
+    guestsImportConfirm: "إضافة الكل",
     // === GUESTS END ===
   },
 } satisfies Record<Language, Record<string, unknown>>;

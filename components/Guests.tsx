@@ -7,6 +7,7 @@ import {
   defaultGuests,
   loadGuests,
   newGuest,
+  parseBulkGuests,
   saveGuests,
   whatsappShareUrl,
 } from "@/lib/guestsStorage";
@@ -38,6 +39,8 @@ export default function Guests({ lang, t, onClose }: Props) {
   const [hydrated, setHydrated] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importDraft, setImportDraft] = useState("");
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -95,6 +98,17 @@ export default function Guests({ lang, t, onClose }: Props) {
     setDoc((prev) => ({ ...prev, entries: [fresh, ...prev.entries] }));
     setEditingId(fresh.id);
     setTimeout(() => nameInputRef.current?.focus(), 0);
+  }
+
+  function commitBulkImport() {
+    const parsed = parseBulkGuests(importDraft);
+    if (parsed.length === 0) {
+      setImportOpen(false);
+      return;
+    }
+    setDoc((prev) => ({ ...prev, entries: [...parsed, ...prev.entries] }));
+    setImportDraft("");
+    setImportOpen(false);
   }
 
   const filters: { key: Filter; label: string; count: number }[] = [
@@ -161,21 +175,40 @@ export default function Guests({ lang, t, onClose }: Props) {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {!lock.locked && (
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={addGuest}
-                  title={t.guestsAdd}
-                  aria-label={t.guestsAdd}
-                  style={{
-                    background: "var(--gold-400)",
-                    color: "#1a1310",
-                    width: 36,
-                    height: 36,
-                  }}
-                >
-                  <IconPlus size={16} />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setImportOpen((v) => !v)}
+                    title={t.guestsImport}
+                    aria-label={t.guestsImport}
+                    className="text-[11px] tnum"
+                    style={{
+                      border: "1px solid rgba(216, 146, 116, 0.32)",
+                      color: "var(--gold-300)",
+                      borderRadius: 999,
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {t.guestsImport}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={addGuest}
+                    title={t.guestsAdd}
+                    aria-label={t.guestsAdd}
+                    style={{
+                      background: "var(--gold-400)",
+                      color: "#1a1310",
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    <IconPlus size={16} />
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -237,6 +270,71 @@ export default function Guests({ lang, t, onClose }: Props) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+          {importOpen && !lock.locked && (
+            <div
+              className="mb-3 p-3 rounded-xl"
+              style={{
+                background: "rgba(216, 146, 116, 0.06)",
+                border: "1px solid rgba(216, 146, 116, 0.24)",
+              }}
+            >
+              <div
+                className="text-[12px] mb-2"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {t.guestsImportHint}
+              </div>
+              <textarea
+                value={importDraft}
+                onChange={(e) => setImportDraft(e.target.value)}
+                placeholder={t.guestsImportPlaceholder}
+                rows={6}
+                className="w-full bg-transparent outline-none"
+                style={{
+                  color: "var(--text)",
+                  fontSize: 13,
+                  border: "1px solid rgba(216, 146, 116, 0.22)",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  resize: "vertical",
+                  fontFamily: "var(--font-meta)",
+                }}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportDraft("");
+                    setImportOpen(false);
+                  }}
+                  className="text-[12px]"
+                  style={{
+                    color: "var(--text-muted)",
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={commitBulkImport}
+                  className="text-[12px] font-semibold"
+                  style={{
+                    background: "var(--gold-400)",
+                    color: "#1a1310",
+                    borderRadius: 999,
+                    padding: "6px 16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t.guestsImportConfirm}
+                </button>
+              </div>
+            </div>
+          )}
+
           {visible.length === 0 ? (
             <div
               className="text-center py-12 italic"
