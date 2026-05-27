@@ -294,7 +294,7 @@ function pill(tone: "ghost" | "gold"): React.CSSProperties {
     return {
       ...base,
       background: "var(--gold-400, #d89274)",
-      color: "#050505",
+      color: "#1a1310",
       borderColor: "var(--gold-400, #d89274)",
     };
   }

@@ -8,13 +8,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Warm sepia darks — harmonise with peach instead of fighting it
         bg: {
-          base: "#050505",
-          deep: "#0a0a0a",
-          panel: "#121212",
-          surface: "#181818",
-          raised: "#242424",
-          hover: "#2a2a2a",
+          base: "#1a1310",
+          deep: "#221a14",
+          panel: "#2a201a",
+          surface: "#342820",
+          raised: "#3e2f25",
+          hover: "#4a382a",
         },
         line: {
           subtle: "rgba(255, 255, 255, 0.06)",

@@ -103,7 +103,7 @@ function BottomPlayerImpl({
       style={{
         padding: "12px 16px 14px",
         background:
-          "linear-gradient(180deg, transparent 0%, rgba(5,5,5,0.86) 30%, rgba(5,5,5,0.96) 100%)",
+          "linear-gradient(180deg, transparent 0%, rgba(26,19,16,0.88) 28%, rgba(26,19,16,0.96) 100%)",
         backdropFilter: "blur(24px) saturate(180%)",
         WebkitBackdropFilter: "blur(24px) saturate(180%)",
         borderTop: "1px solid var(--line-subtle)",

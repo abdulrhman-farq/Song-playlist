@@ -116,7 +116,7 @@ export default function SectionToolbar({
           width: 38,
           height: 38,
           background: trackCount > 0 ? "var(--gold-400)" : undefined,
-          color: trackCount > 0 ? "#050505" : undefined,
+          color: trackCount > 0 ? "#1a1310" : undefined,
         }}
       >
         <PlayIcon size={16} />
