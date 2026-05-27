@@ -27,7 +27,9 @@ export default function AppShell({ lang, sidebar, bottomPlayer, children }: Prop
         className="relative"
         style={{
           paddingInlineStart: "var(--shell-pad-start, 0)",
-          paddingBottom: 140,
+          // Mobile player can be 2 rows tall (≤520px) → reserve more
+          // bottom space so content doesn't sit under it.
+          paddingBottom: "clamp(140px, 22vh, 200px)",
         }}
       >
         <style jsx>{`
@@ -37,7 +39,14 @@ export default function AppShell({ lang, sidebar, bottomPlayer, children }: Prop
             }
           }
         `}</style>
-        <div className="mx-auto" style={{ maxWidth: 1280, padding: "32px 24px 0" }}>
+        <div
+          className="mx-auto"
+          style={{
+            maxWidth: 1280,
+            // Mobile-first: tight padding; expands on larger screens.
+            padding: "clamp(20px, 4vw, 32px) clamp(14px, 4vw, 24px) 0",
+          }}
+        >
           {children}
         </div>
       </main>

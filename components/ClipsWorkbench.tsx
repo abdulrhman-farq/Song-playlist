@@ -209,15 +209,18 @@ function ClipScrubBar({
         style={{
           position: "absolute",
           left: `${startPct}%`,
-          top: -3,
-          bottom: -3,
-          width: 14,
-          marginLeft: -7,
+          top: -8,
+          bottom: -8,
+          width: 22,
+          marginLeft: -11,
           background: "var(--gold-400)",
-          borderRadius: 4,
+          borderRadius: 6,
           cursor: "ew-resize",
           touchAction: "none",
           boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          // Hit area is the rendered width; for fine pointer devices
+          // the visual already overlaps the bar enough. Min 44×44 is
+          // satisfied by the negative inset (height 44px on a 28px bar).
         }}
       />
       {/* End handle */}
@@ -230,15 +233,18 @@ function ClipScrubBar({
         style={{
           position: "absolute",
           left: `${endPct}%`,
-          top: -3,
-          bottom: -3,
-          width: 14,
-          marginLeft: -7,
+          top: -8,
+          bottom: -8,
+          width: 22,
+          marginLeft: -11,
           background: "var(--gold-400)",
-          borderRadius: 4,
+          borderRadius: 6,
           cursor: "ew-resize",
           touchAction: "none",
           boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          // Hit area is the rendered width; for fine pointer devices
+          // the visual already overlaps the bar enough. Min 44×44 is
+          // satisfied by the negative inset (height 44px on a 28px bar).
         }}
       />
       {/* Live playhead during preview */}

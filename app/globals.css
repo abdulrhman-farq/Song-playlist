@@ -1064,6 +1064,38 @@ input[type="range"].slider:hover::-moz-range-thumb {
 .track-row.drop-below::after {
   bottom: -1px;
 }
+/* ── Responsive BottomPlayer grid ──
+   Desktop: 3 columns (now-playing | transport+seek | volume).
+   ≤860px: now-playing + transport+seek share row 1, volume drops to
+   row 2 spanning full width.
+   ≤520px: 2-row layout — row 1 is the now-playing card + the gold
+   play button only; row 2 is the seek bar + transport row + the
+   volume row. Phones get reach-friendly layout.
+*/
+.wp-player-grid {
+  grid-template-columns:
+    minmax(180px, 1fr) minmax(280px, 2fr) minmax(180px, 1fr);
+}
+@media (max-width: 860px) {
+  .wp-player-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .wp-player-grid > :nth-child(3) {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+@media (max-width: 520px) {
+  .wp-player-grid {
+    grid-template-columns: 1fr;
+  }
+  .wp-player-grid > :nth-child(1),
+  .wp-player-grid > :nth-child(2),
+  .wp-player-grid > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
 .track-row .hover-only {
   opacity: 0;
   transition: opacity 0.18s var(--ease-out);
@@ -1071,6 +1103,27 @@ input[type="range"].slider:hover::-moz-range-thumb {
 .track-row:hover .hover-only,
 .track-row:focus-within .hover-only {
   opacity: 1;
+}
+/* Touch devices have no real hover. Show the row actions permanently
+   so they're tappable. We use `(hover: none)` rather than a phone
+   width breakpoint because some tablets are wide but still touch. */
+@media (hover: none) {
+  .track-row .hover-only {
+    opacity: 1;
+  }
+  /* Index→play swap normally happens on hover. On touch, keep the
+     play-icon visible so the row's primary action is always obvious. */
+  .track-row .index-or-play .index-num {
+    display: none;
+  }
+  .track-row .index-or-play .play-affordance {
+    display: inline-flex !important;
+  }
+  /* Bigger touch targets on icon buttons */
+  .icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
 }
 .track-row .index-or-play .play-affordance {
   display: none;

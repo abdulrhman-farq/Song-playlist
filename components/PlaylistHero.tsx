@@ -119,7 +119,9 @@ export default function PlaylistHero({
       {/* Content */}
       <div
         className="relative grid grid-cols-1 md:grid-cols-[260px,1fr] gap-8 md:gap-10"
-        style={{ padding: "var(--space-8) var(--space-7)" }}
+        style={{
+          padding: "clamp(20px, 5vw, var(--space-8)) clamp(16px, 4vw, var(--space-7))",
+        }}
       >
         {/* Artwork — breathing + ring pulse when playing */}
         <div className="flex md:block justify-center">

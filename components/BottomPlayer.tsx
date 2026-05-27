@@ -130,11 +130,7 @@ function BottomPlayerImpl({
       )}
 
       <div
-        className="mx-auto max-w-[1400px] grid items-center gap-4 relative"
-        style={{
-          gridTemplateColumns:
-            "minmax(180px, 1fr) minmax(280px, 2fr) minmax(180px, 1fr)",
-        }}
+        className="mx-auto max-w-[1400px] grid items-center gap-3 relative wp-player-grid"
       >
         {/* Left: now playing */}
         <div className="flex items-center gap-3 min-w-0">
