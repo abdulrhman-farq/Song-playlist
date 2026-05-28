@@ -50,6 +50,7 @@ interface Props {
   onOpenTasks: () => void;
   onOpenLive: () => void;
   onOpenGuests: () => void;
+  onOpenInvitation: () => void;
   onOpenClipsWorkbench?: () => void;
 }
 
@@ -75,6 +76,7 @@ export default function Sidebar({
   onOpenTasks,
   onOpenLive,
   onOpenGuests,
+  onOpenInvitation,
   onOpenClipsWorkbench,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -225,6 +227,20 @@ export default function Sidebar({
           <GuestsGlyph />
           <span>
             <EditableText editKey="sidebar.nav.guests" fallback={t.guests} />
+          </span>
+        </button>
+        <button
+          type="button"
+          className="nav-row"
+          onClick={actAndClose(onOpenInvitation)}
+          aria-label={t.invitation}
+        >
+          <InvitationGlyph />
+          <span>
+            <EditableText
+              editKey="sidebar.nav.invitation"
+              fallback={t.invitation}
+            />
           </span>
         </button>
         <button
@@ -579,6 +595,26 @@ function LiveDot() {
         display: "inline-block",
       }}
     />
+  );
+}
+
+/** Envelope glyph for the invitation nav row. */
+function InvitationGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <polyline points="3 7 12 13 21 7" />
+    </svg>
   );
 }
 

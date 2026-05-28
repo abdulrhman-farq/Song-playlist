@@ -315,6 +315,27 @@ export const strings = {
       "Ahmed Saleh, +966 50 123 4567, 2, groom\nRuwaida's mother, +966 55 987 6543, 1, bride\n…",
     guestsImportConfirm: "Add all",
     // === GUESTS END ===
+    // === INVITATION START ===
+    invitation: "Invitation",
+    invitationEyebrow: "WITH OUR FAMILIES · بكامل المودة",
+    invitationDateLine: "Friday · 29 · 05 · 2026",
+    invitationVenue: "8:00 PM · Riyadh",
+    invitationMessage:
+      "We would be honoured by your presence on the night that begins our story together.",
+    invitationGreeting: "DEAR",
+    invitationWillAttend: "I'll attend",
+    invitationMaybe: "Maybe",
+    invitationCantAttend: "I can't make it",
+    invitationRsvpThanks: "Thank you · we'll save your seat",
+    invitationRsvpDeclined: "Reply saved · we'll miss you",
+    invitationRsvpMaybe: "Reply saved",
+    invitationCopyLink: "Copy invite link",
+    invitationCopied: "Link copied",
+    invitationCopyFailed: "Couldn't copy — long-press to copy manually",
+    invitationCountdownToday: "Tonight",
+    invitationCountdownTomorrow: "Tomorrow",
+    invitationHostPreview: "Preview invitation",
+    // === INVITATION END ===
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -628,6 +649,27 @@ export const strings = {
       "أحمد صالح، ‎+966 50 123 4567، 2، العريس\nأم العروس، ‎+966 55 987 6543، 1، العروس\n…",
     guestsImportConfirm: "إضافة الكل",
     // === GUESTS END ===
+    // === INVITATION START ===
+    invitation: "الدعوة",
+    invitationEyebrow: "بكامل المودة · WITH OUR FAMILIES",
+    invitationDateLine: "الجمعة · ٢٩ · ٠٥ · ٢٠٢٦",
+    invitationVenue: "٨:٠٠ مساءً · الرياض",
+    invitationMessage:
+      "يُشرّفنا حضوركم ومشاركتنا فرحة بداية حياتنا معاً.",
+    invitationGreeting: "إلى",
+    invitationWillAttend: "سأحضر",
+    invitationMaybe: "ربما",
+    invitationCantAttend: "لا أستطيع",
+    invitationRsvpThanks: "شكراً · سنحفظ مكانك",
+    invitationRsvpDeclined: "تم حفظ ردك · سنفتقدك",
+    invitationRsvpMaybe: "تم حفظ ردك",
+    invitationCopyLink: "نسخ رابط الدعوة",
+    invitationCopied: "تم نسخ الرابط",
+    invitationCopyFailed: "تعذّر النسخ — الصق يدوياً",
+    invitationCountdownToday: "الليلة",
+    invitationCountdownTomorrow: "غدًا",
+    invitationHostPreview: "معاينة الدعوة",
+    // === INVITATION END ===
   },
 } satisfies Record<Language, Record<string, unknown>>;
 

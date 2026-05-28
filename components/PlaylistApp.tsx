@@ -68,6 +68,9 @@ const LiveMode = dynamic(() => import("@/components/LiveMode"), {
 const Guests = dynamic(() => import("@/components/Guests"), {
   ssr: false,
 });
+const Invitation = dynamic(() => import("@/components/Invitation"), {
+  ssr: false,
+});
 const TrimModal = dynamic(() => import("@/components/TrimModal"), {
   ssr: false,
 });
@@ -177,6 +180,8 @@ export default function PlaylistApp() {
   const [liveOpen, setLiveOpen] = useState(false);
   // Guest book overlay
   const [guestsOpen, setGuestsOpen] = useState(false);
+  // Invitation preview overlay
+  const [invitationOpen, setInvitationOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1227,6 +1232,8 @@ export default function PlaylistApp() {
   const handleCloseLive = useCallback(() => setLiveOpen(false), []);
   const handleOpenGuests = useCallback(() => setGuestsOpen(true), []);
   const handleCloseGuests = useCallback(() => setGuestsOpen(false), []);
+  const handleOpenInvitation = useCallback(() => setInvitationOpen(true), []);
+  const handleCloseInvitation = useCallback(() => setInvitationOpen(false), []);
   const handleVolumeChange = useCallback((v: number) => {
     setVolume(v);
     setMuted(false);
@@ -1285,6 +1292,7 @@ export default function PlaylistApp() {
           onOpenTasks={handleOpenTasks}
           onOpenLive={handleOpenLive}
           onOpenGuests={handleOpenGuests}
+          onOpenInvitation={handleOpenInvitation}
           onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
@@ -1523,6 +1531,15 @@ export default function PlaylistApp() {
 
       {guestsOpen && (
         <Guests lang={lang} t={t} onClose={handleCloseGuests} />
+      )}
+
+      {invitationOpen && (
+        <Invitation
+          lang={lang}
+          t={t}
+          hostMode
+          onClose={handleCloseInvitation}
+        />
       )}
 
       <UndoToast />
