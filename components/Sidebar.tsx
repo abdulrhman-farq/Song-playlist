@@ -10,6 +10,7 @@ import {
   IconEdit,
   IconExport,
   IconGlobe,
+  IconHeart,
   IconHome,
   IconImport,
   IconLibrary,
@@ -51,6 +52,7 @@ interface Props {
   onOpenLive: () => void;
   onOpenGuests: () => void;
   onOpenInvitation: () => void;
+  onOpenCurated: () => void;
   onOpenClipsWorkbench?: () => void;
 }
 
@@ -77,6 +79,7 @@ export default function Sidebar({
   onOpenLive,
   onOpenGuests,
   onOpenInvitation,
+  onOpenCurated,
   onOpenClipsWorkbench,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -368,6 +371,12 @@ export default function Sidebar({
           <>
             <ActionRow icon={<IconSparkle size={16} />} onClick={actAndClose(onSamples)}>
               <EditableText editKey="sidebar.actions.sample" fallback={t.sample} />
+            </ActionRow>
+            <ActionRow icon={<IconHeart size={16} />} onClick={actAndClose(onOpenCurated)}>
+              <EditableText
+                editKey="sidebar.actions.curated"
+                fallback={t.curatedKhalijiRomanceTitle}
+              />
             </ActionRow>
             <ActionRow icon={<IconImport size={16} />} onClick={actAndClose(onImport)}>
               <EditableText

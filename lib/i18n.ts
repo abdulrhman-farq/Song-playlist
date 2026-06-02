@@ -336,6 +336,17 @@ export const strings = {
     invitationCountdownTomorrow: "Tomorrow",
     invitationHostPreview: "Preview invitation",
     // === INVITATION END ===
+    // === CURATED PICKS START ===
+    curatedPicks: "Curated picks",
+    curatedEyebrow: "CURATED · رومانسي خليجي",
+    curatedKhalijiRomanceTitle: "Khaliji Romance",
+    curatedSongCount: "suggestions",
+    curatedHint:
+      "Tap a row to open YouTube search · pick the official upload · then paste its URL into the YouTube panel.",
+    curatedOpenYoutube: "YouTube",
+    curatedPrefillLabel: "Prefill",
+    curatedPrefillTitle: "Prefill the YouTube composer with this title",
+    // === CURATED PICKS END ===
   },
   ar: {
     eyebrow: "قائمة الزفاف · ٢٩ · ٠٥ · ٢٠٢٦",
@@ -670,6 +681,17 @@ export const strings = {
     invitationCountdownTomorrow: "غدًا",
     invitationHostPreview: "معاينة الدعوة",
     // === INVITATION END ===
+    // === CURATED PICKS START ===
+    curatedPicks: "اقتراحات مختارة",
+    curatedEyebrow: "مختارات · رومانسي خليجي",
+    curatedKhalijiRomanceTitle: "رومانسي خليجي",
+    curatedSongCount: "أغنية مقترحة",
+    curatedHint:
+      "اضغط على أي سطر لفتح بحث يوتيوب · اختر النسخة الرسمية · ثم الصق الرابط في لوحة يوتيوب.",
+    curatedOpenYoutube: "يوتيوب",
+    curatedPrefillLabel: "تعبئة",
+    curatedPrefillTitle: "تعبئة لوحة إضافة يوتيوب بهذا العنوان",
+    // === CURATED PICKS END ===
   },
 } satisfies Record<Language, Record<string, unknown>>;
 

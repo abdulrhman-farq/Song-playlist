@@ -71,6 +71,9 @@ const Guests = dynamic(() => import("@/components/Guests"), {
 const Invitation = dynamic(() => import("@/components/Invitation"), {
   ssr: false,
 });
+const CuratedPicks = dynamic(() => import("@/components/CuratedPicks"), {
+  ssr: false,
+});
 const TrimModal = dynamic(() => import("@/components/TrimModal"), {
   ssr: false,
 });
@@ -182,6 +185,8 @@ export default function PlaylistApp() {
   const [guestsOpen, setGuestsOpen] = useState(false);
   // Invitation preview overlay
   const [invitationOpen, setInvitationOpen] = useState(false);
+  // Curated picks overlay
+  const [curatedOpen, setCuratedOpen] = useState(false);
   /** Mirror of the active track's endAt so playback listeners can check it. */
   const endAtRef = useRef<number | null>(null);
   /** DOM refs to each section block — used by the sidebar to scroll to a section. */
@@ -1234,6 +1239,8 @@ export default function PlaylistApp() {
   const handleCloseGuests = useCallback(() => setGuestsOpen(false), []);
   const handleOpenInvitation = useCallback(() => setInvitationOpen(true), []);
   const handleCloseInvitation = useCallback(() => setInvitationOpen(false), []);
+  const handleOpenCurated = useCallback(() => setCuratedOpen(true), []);
+  const handleCloseCurated = useCallback(() => setCuratedOpen(false), []);
   const handleVolumeChange = useCallback((v: number) => {
     setVolume(v);
     setMuted(false);
@@ -1293,6 +1300,7 @@ export default function PlaylistApp() {
           onOpenLive={handleOpenLive}
           onOpenGuests={handleOpenGuests}
           onOpenInvitation={handleOpenInvitation}
+          onOpenCurated={handleOpenCurated}
           onOpenClipsWorkbench={handleOpenClipsWorkbench}
         />
       }
@@ -1540,6 +1548,10 @@ export default function PlaylistApp() {
           hostMode
           onClose={handleCloseInvitation}
         />
+      )}
+
+      {curatedOpen && (
+        <CuratedPicks lang={lang} t={t} onClose={handleCloseCurated} />
       )}
 
       <UndoToast />
